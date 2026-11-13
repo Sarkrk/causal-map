@@ -148,8 +148,7 @@ export function parseLag(text) {
     for (const raw of [m[1], m[2]]) {
       if (raw === undefined) continue;
       const n = Number(raw);
-      if (unit === '년') found.add('long');
-      else found.add(monthsToLag(unit === '분기' ? n * 3 : n));
+      found.add(monthsToLag(unit === '년' ? n * 12 : unit === '분기' ? n * 3 : n));
     }
   }
   if (IMMEDIATE_KW.test(s)) found.add('immediate');

@@ -31,7 +31,7 @@ async function boot() {
   }
   const data = loaded.data;
   const graph = createGraph(data);
-  const store = createStore(initialState(categoriesPresent(graph)));
+  const store = createStore(initialState(categoriesPresent(graph)), { nodeIds: graph.nodes.map((n) => n.id) });
 
   const search = initSearch({
     graph,

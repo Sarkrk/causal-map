@@ -17,8 +17,6 @@ import {
   traceOf,
   sameTrace,
   traceAt,
-  toggleReverse,
-  isReversed,
 } from '../src/ui/explore.js';
 
 /** @typedef {import('../src/store/store.js').AppState} AppState */
@@ -150,21 +148,16 @@ test('메모이즈: 같은 키 두 번 호출하면 엔진은 한 번만 돈다'
   assert.equal(loopCalls, 2);
 });
 
-test('방향 반전: paths()가 sel↔to를 뒤집고, 노드 쌍이 바뀌면 정방향으로 돌아간다', () => {
+test('방향 반전: paths()가 view.pathRev에 따라 sel↔to를 뒤집는다', () => {
   const explore = createExplore();
   const ids = graph.nodes.map((n) => n.id);
   const a = ids[0];
   const b = ids[1];
   const st = stateWith({ selected: a, pathTo: b });
   assert.equal(explore.paths(graph, st)?.from, a);
-  toggleReverse(a, b);
-  assert.equal(isReversed(a, b), true);
-  const rv = explore.paths(graph, st);
+  const rv = explore.paths(graph, stateWith({ selected: a, pathTo: b, pathRev: true }));
   assert.equal(rv?.from, b);
   assert.equal(rv?.to, a);
-  // 다른 쌍이면 초기화
-  assert.equal(isReversed(a, ids[2]), false);
-  assert.equal(isReversed(a, b), false);
 });
 
 test('trace: traceOf·sameTrace·traceAt가 항목을 일관되게 해석한다', () => {

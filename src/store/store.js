@@ -1,6 +1,7 @@
 // @ts-check
 // 단일 상태 저장소. dispatch마다 새 상태 객체를 만들고 이전 객체는 바꾸지 않는다.
-// filters·prefs·view.hop·view.dir만 storage(JSON)에 저장한다. selected·tab·flatAll은 저장하지 않는다.
+// filters·prefs·view.hop·dir·pathTo·pathRev·pathQuery·search를 storage(JSON)에 저장한다. selected·tab·flatAll·trace는 저장하지 않는다.
+// 복원 때 pathTo는 nodeIds(알려진 노드 id 목록)가 주어지고 그 안에 있을 때만 살린다.
 import { LEVELS, CATEGORY_ORDER } from './labels.js';
 
 /**
@@ -21,6 +22,9 @@ import { LEVELS, CATEGORY_ORDER } from './labels.js';
  * @property {boolean} flatAll
  * @property {Trace|null} trace    루프·경로 탭에서 고른 한 개(캔버스·관계도 강조용)
  * @property {string|null} pathTo   경로 탭의 도착 노드 id
+ * @property {boolean} pathRev      경로 방향 반전(true면 도착→선택 노드). 선택·도착 쌍이 바뀌면 false로 돌아간다
+ * @property {string} pathQuery     경로 탭 도착 노드 검색어(탭을 오가도 유지)
+ * @property {string} search        상단 검색창 검색어
  */
 
 /**
@@ -59,6 +63,9 @@ import { LEVELS, CATEGORY_ORDER } from './labels.js';
  *   | {type:'setTrace', trace:Trace}
  *   | {type:'clearTrace'}
  *   | {type:'setPathTo', id:string|null}
+   | {type:'togglePathRev'}
+   | {type:'setPathQuery', value:string}
+   | {type:'setSearch', value:string}
  *   | {type:'restoreView', selected:string|null, tab?:string, dir?:string, hop?:number, pathTo?:string|null}} Action
  */
 
@@ -85,7 +92,7 @@ const PREF_KEYS = ['labAll', 'hideOrph', 'autoSpin', 'wobble'];
 export function initialState(categories) {
   return {
     filters: { levels: LEVELS.slice(), cats: categories.slice(), thr: 0, showNR: true, showCor: false },
-    view: { selected: null, hop: 1, dir: 'both', tab: 'in', flatAll: false, trace: null, pathTo: null },
+    view: { selected: null, hop: 1, dir: 'both', tab: 'in', flatAll: false, trace: null, pathTo: null, pathRev: false, pathQuery: '', search: '' },
     prefs: { labAll: false, hideOrph: true, autoSpin: true, wobble: true },
   };
 }
@@ -110,9 +117,9 @@ function defaultStorage() {
 function reduce(s, a) {
   switch (a.type) {
     case 'select':
-      return { ...s, view: { ...s.view, selected: a.id, flatAll: false, tab: 'map', trace: null, pathTo: null } };
+      return { ...s, view: { ...s.view, selected: a.id, flatAll: false, tab: 'map', trace: null, pathTo: null, pathRev: false, pathQuery: '' } };
     case 'deselect':
-      return { ...s, view: { ...s.view, selected: null, trace: null, pathTo: null } };
+      return { ...s, view: { ...s.view, selected: null, trace: null, pathTo: null, pathRev: false, pathQuery: '' } };
     case 'toggleLevel': {
       const on = s.filters.levels.includes(a.level);
       const levels = LEVELS.filter((l) => (l === a.level ? !on : s.filters.levels.includes(l)));
@@ -154,12 +161,22 @@ function reduce(s, a) {
     }
     case 'clearTrace':
       return s.view.trace ? { ...s, view: { ...s.view, trace: null } } : s;
-    case 'setPathTo':
-      return { ...s, view: { ...s.view, pathTo: typeof a.id === 'string' ? a.id : null, trace: null } };
+    case 'setPathTo': {
+      const pathTo = typeof a.id === 'string' ? a.id : null;
+      // 도착 노드가 바뀌면 정방향으로 돌아간다
+      return { ...s, view: { ...s.view, pathTo, pathRev: pathTo === s.view.pathTo ? s.view.pathRev : false, trace: null } };
+    }
+    case 'togglePathRev':
+      return { ...s, view: { ...s.view, pathRev: !s.view.pathRev, trace: null } };
+    case 'setPathQuery':
+      return typeof a.value === 'string' ? { ...s, view: { ...s.view, pathQuery: a.value } } : s;
+    case 'setSearch':
+      return typeof a.value === 'string' ? { ...s, view: { ...s.view, search: a.value } } : s;
     case 'restoreView': {
       // 주소(#...)·뒤로 가기 복원용. 값 검증은 여기서, 노드 존재 확인은 호출자가 한다.
       const v = s.view;
       const sel = typeof a.selected === 'string' ? a.selected : null;
+      const samePair = sel !== null && sel === v.selected && typeof a.pathTo === 'string' && a.pathTo === v.pathTo;
       return {
         ...s,
         view: {
@@ -169,6 +186,9 @@ function reduce(s, a) {
           dir: DIRS.includes(/** @type {any} */ (a.dir)) ? /** @type {View['dir']} */ (a.dir) : v.dir,
           hop: a.hop === 1 || a.hop === 2 ? a.hop : v.hop,
           pathTo: sel && typeof a.pathTo === 'string' ? a.pathTo : null,
+          // 같은 (선택, 도착) 쌍이면 반전·검색어를 유지하고, 다르면 초기화
+          pathRev: samePair ? v.pathRev : false,
+          pathQuery: samePair ? v.pathQuery : '',
           trace: null,
           flatAll: false,
         },
@@ -206,9 +226,10 @@ function readSaved(key, storage) {
  * @param {AppState} initial
  * @param {string} key
  * @param {StorageLike|undefined} storage
+ * @param {ReadonlySet<string>|undefined} nodeIds  알려진 노드 id. 없으면 pathTo는 복원하지 않는다
  * @returns {AppState}
  */
-function restore(initial, key, storage) {
+function restore(initial, key, storage, nodeIds) {
   const saved = readSaved(key, storage);
   if (!saved) return initial;
   const f = obj(saved.filters);
@@ -224,6 +245,7 @@ function restore(initial, key, storage) {
       ? [...new Set(/** @type {string[]} */ (f.cats))]
       : initial.filters.cats;
   const thr = typeof f.thr === 'number' && f.thr >= 0 && f.thr <= 1 ? f.thr : initial.filters.thr;
+  const pathTo = typeof v.pathTo === 'string' && nodeIds?.has(v.pathTo) ? v.pathTo : null;
   return {
     filters: {
       levels,
@@ -242,6 +264,10 @@ function restore(initial, key, storage) {
       ...initial.view,
       hop: v.hop === 1 || v.hop === 2 ? v.hop : initial.view.hop,
       dir: DIRS.includes(v.dir) ? v.dir : initial.view.dir,
+      pathTo,
+      pathRev: pathTo !== null && v.pathRev === true,
+      pathQuery: typeof v.pathQuery === 'string' ? v.pathQuery.slice(0, 200) : initial.view.pathQuery,
+      search: typeof v.search === 'string' ? v.search.slice(0, 200) : initial.view.search,
     },
   };
 }
@@ -258,7 +284,14 @@ function save(key, storage, s) {
       JSON.stringify({
         filters: s.filters,
         prefs: s.prefs,
-        view: { hop: s.view.hop, dir: s.view.dir },
+        view: {
+          hop: s.view.hop,
+          dir: s.view.dir,
+          pathTo: s.view.pathTo,
+          pathRev: s.view.pathRev,
+          pathQuery: s.view.pathQuery,
+          search: s.view.search,
+        },
       }),
     );
   } catch {
@@ -268,10 +301,10 @@ function save(key, storage, s) {
 
 /**
  * @param {AppState} initial
- * @param {{persistKey?: string, storage?: StorageLike|undefined}} [opts]
+ * @param {{persistKey?: string, storage?: StorageLike|undefined, nodeIds?: Iterable<string>}} [opts]
  */
-export function createStore(initial, { persistKey = 'cg_view', storage = defaultStorage() } = {}) {
-  let state = restore(initial, persistKey, storage);
+export function createStore(initial, { persistKey = 'cg_view', storage = defaultStorage(), nodeIds } = {}) {
+  let state = restore(initial, persistKey, storage, nodeIds ? new Set(nodeIds) : undefined);
   /** @type {Set<Listener>} */
   const subs = new Set();
   return {
@@ -287,7 +320,11 @@ export function createStore(initial, { persistKey = 'cg_view', storage = default
         state.filters !== prev.filters ||
         state.prefs !== prev.prefs ||
         state.view.hop !== prev.view.hop ||
-        state.view.dir !== prev.view.dir
+        state.view.dir !== prev.view.dir ||
+        state.view.pathTo !== prev.view.pathTo ||
+        state.view.pathRev !== prev.view.pathRev ||
+        state.view.pathQuery !== prev.view.pathQuery ||
+        state.view.search !== prev.view.search
       ) {
         save(persistKey, storage, state);
       }

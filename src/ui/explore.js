@@ -88,7 +88,7 @@ export function createExplore(engines = {}) {
       );
     },
     /**
-     * 선택 노드 → 도착 노드(pathTo) 경로. 방향 반전 상태를 반영한다.
+     * 선택 노드 → 도착 노드(pathTo) 경로. 방향 반전(view.pathRev)을 반영한다.
      * 도착 노드가 없으면 null.
      * @param {Graph} g
      * @param {AppState} st
@@ -98,7 +98,7 @@ export function createExplore(engines = {}) {
       const sel = st.view.selected;
       const pathTo = st.view.pathTo;
       if (!sel || !pathTo) return null;
-      const rev = isReversed(sel, pathTo);
+      const rev = st.view.pathRev;
       const from = rev ? pathTo : sel;
       const to = rev ? sel : pathTo;
       const items = cached(g, `P|${filterKey(st)}|${from}|${to}|${PATH_MAX_LEN}`, () =>
@@ -131,32 +131,6 @@ export function loopItems(g, st) {
  */
 export function pathItems(g, st) {
   return defaultExplore.paths(g, st);
-}
-
-/* ---------- 방향 반전 상태 (모듈 지역) ----------
- * 선택 노드·도착 노드 쌍이 바뀌면 자동으로 정방향으로 돌아간다.
- * 패널은 렌더마다 isReversed를 한 번 불러 쌍 변경을 반영한다. */
-/** @type {{sel: string|null, to: string|null, rev: boolean}} */
-let dirState = { sel: null, to: null, rev: false };
-
-/**
- * 현재 쌍에서 반전 여부. 쌍이 바뀌었으면 정방향으로 초기화한다.
- * @param {string|null} sel
- * @param {string|null} to
- * @returns {boolean}
- */
-export function isReversed(sel, to) {
-  if (dirState.sel !== sel || dirState.to !== to) dirState = { sel, to, rev: false };
-  return dirState.rev;
-}
-
-/**
- * '⇄ 반대로' 토글.
- * @param {string|null} sel
- * @param {string|null} to
- */
-export function toggleReverse(sel, to) {
-  dirState = { sel, to, rev: !isReversed(sel, to) };
 }
 
 /* ---------- trace ---------- */
@@ -296,8 +270,8 @@ export function pathBoxHtml(g, st) {
   const sel = st.view.selected ?? '';
   return (
     `<div id="pbox" data-sel="${esc(sel)}">` +
-    `<input id="pq" type="search" placeholder="도착 노드 검색" autocomplete="off" style="width:100%;height:40px;border-radius:20px;border:1px solid var(--line);background:#2e2e2e;color:var(--tx);padding:0 14px;font-size:16px;outline:none">` +
-    `<div id="psug" class="row" style="margin-top:6px"></div>` +
+    `<input id="pq" type="search" placeholder="도착 노드 검색" autocomplete="off" value="${esc(st.view.pathQuery)}" style="width:100%;height:40px;border-radius:20px;border:1px solid var(--line);background:#2e2e2e;color:var(--tx);padding:0 14px;font-size:16px;outline:none">` +
+    `<div id="psug" class="row" style="margin-top:6px">${suggestHtml(g, st.view.pathQuery, sel || null)}</div>` +
     `<div data-part="plist">${pathListHtml(g, st)}</div>` +
     `</div>`
   );

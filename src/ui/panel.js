@@ -12,8 +12,6 @@ import {
   pathBoxHtml,
   pathListHtml,
   suggestHtml,
-  isReversed,
-  toggleReverse,
   traceAt,
   sameTrace,
 } from './explore.js';
@@ -80,8 +78,6 @@ export function initPanel(o) {
     if (!sel) return;
     const n = nodeOf(sel);
     const { hop, dir, tab } = st.view;
-    // 노드 쌍이 바뀌었으면 경로 방향 반전을 초기화한다(렌더마다 호출).
-    isReversed(sel, st.view.pathTo);
     const inn = graph.edges.filter((l) => l.dst === n.id);
     const out = graph.edges.filter((l) => l.src === n.id);
     const cr = graph.cors.filter((c) => c.src === n.id || c.dst === n.id);
@@ -120,9 +116,8 @@ export function initPanel(o) {
         // 입력창(#pq)과 입력값은 그대로 두고 제안·결과만 갈아 끼운다.
         const pl = box.querySelector('[data-part="plist"]');
         if (pl) pl.innerHTML = pathListHtml(graph, st);
-        const pq = /** @type {HTMLInputElement|null} */ (box.querySelector('#pq'));
         const ps = box.querySelector('#psug');
-        if (ps) ps.innerHTML = suggestHtml(graph, pq ? pq.value : '', sel);
+        if (ps) ps.innerHTML = suggestHtml(graph, st.view.pathQuery, sel);
       } else {
         nbody.innerHTML = pathBoxHtml(graph, st);
       }
@@ -162,10 +157,10 @@ export function initPanel(o) {
         const id = a.getAttribute('data-id');
         const pq = /** @type {HTMLInputElement|null} */ (nb.querySelector('#pq'));
         if (pq) pq.value = '';
+        store.dispatch({ type: 'setPathQuery', value: '' });
         if (id) store.dispatch({ type: 'setPathTo', id });
       } else if (act === 'pathrev') {
-        toggleReverse(st.view.selected, st.view.pathTo);
-        store.dispatch({ type: 'clearTrace' });
+        store.dispatch({ type: 'togglePathRev' });
       }
       return;
     }
@@ -177,10 +172,13 @@ export function initPanel(o) {
   nb.addEventListener('input', (e) => {
     const t = /** @type {HTMLElement} */ (e.target);
     if (t.id !== 'pq') return;
-    const ps = nb.querySelector('#psug');
-    if (ps) ps.innerHTML = suggestHtml(graph, /** @type {HTMLInputElement} */ (t).value, store.get().view.selected);
+    // 검색어는 store에 두어 탭을 오가도 유지한다. 제안 목록은 render가 갈아 끼운다.
+    store.dispatch({ type: 'setPathQuery', value: /** @type {HTMLInputElement} */ (t).value });
   });
 
-  store.subscribe((st) => render(st));
+  // 상단 검색어는 패널 내용과 무관하므로 다시 그리지 않는다.
+  store.subscribe((st, _prev, action) => {
+    if (action.type !== 'setSearch') render(st);
+  });
   render(store.get());
 }

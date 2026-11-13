@@ -17,7 +17,7 @@ export function initSearch(o) {
     sug.style.display = 'none';
   }
 
-  q.addEventListener('input', () => {
+  function showSug() {
     const v = q.value.trim().toLowerCase();
     if (!v) {
       closeSug();
@@ -32,7 +32,15 @@ export function initSearch(o) {
         )
         .join('') || '<div class="sub">없음</div>';
     sug.style.display = 'block';
+  }
+
+  q.addEventListener('input', () => {
+    store.dispatch({ type: 'setSearch', value: q.value });
+    showSug();
   });
+
+  // 저장된 검색어를 입력창에 되돌린다(제안 목록은 입력할 때 연다).
+  q.value = store.get().view.search;
 
   sug.addEventListener('click', (e) => {
     const t = /** @type {Element} */ (e.target);
@@ -41,6 +49,7 @@ export function initSearch(o) {
     const node = graph.byId.get(/** @type {string} */ (/** @type {HTMLElement} */ (d).dataset.id));
     if (!node) return;
     q.value = '';
+    store.dispatch({ type: 'setSearch', value: '' });
     closeSug();
     q.blur();
     if (!store.get().filters.cats.includes(node.cat)) store.dispatch({ type: 'toggleCat', cat: node.cat });

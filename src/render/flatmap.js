@@ -104,6 +104,18 @@ export function flatHtml(graph, state, nid) {
     }
   }
 
+  // trace(루프·경로)가 있으면 그 노드와 연속 노드 쌍(방향 일치) 엣지만 강조, 나머지는 흐리게. 없으면 클래스를 붙이지 않는다.
+  const tr = state.view.trace;
+  const trNodes = new Set(tr ? tr.nodes : []);
+  /** @type {Set<string>} */
+  const trPairs = new Set();
+  if (tr) {
+    for (let i = 0; i + 1 < tr.nodes.length; i++) trPairs.add(tr.nodes[i] + '\u0001' + tr.nodes[i + 1]);
+    if (tr.kind === 'loop' && tr.nodes.length > 1) trPairs.add(tr.nodes[tr.nodes.length - 1] + '\u0001' + tr.nodes[0]);
+  }
+  /** @param {boolean} hit */
+  const trCls = (hit) => (tr ? (hit ? 'tr-on' : 'tr-dim') : '');
+
   const nc = cols.length;
   const bw = hop === 1 ? Math.max(92, Math.floor((Math.min(innerWidth, 520) - 40 - 2 * 28) / 3)) : 92;
   const gap = hop === 1 ? 28 : 22;
@@ -121,7 +133,7 @@ export function flatHtml(graph, state, nid) {
 
   let sv = '';
   const mid = Math.floor(nc / 2);
-  /** @type {[number, number, string, string][]} */
+  /** @type {[number, number, string, string, string][]} */
   const badge = [];
   for (let i = 0; i < nc - 1; i++) {
     for (const l of links) {
@@ -135,13 +147,14 @@ export function flatHtml(graph, state, nid) {
       const cx = (x1 + x2) / 2;
       const col = GC[/** @type {'A'} */ (l.level)];
       const on = i === mid - 1 || i === mid;
-      sv += `<path d="M${x1},${y1} C${cx},${y1} ${cx},${y2} ${x2 - 4},${y2}" fill="none" stroke="${col}" stroke-opacity="${on ? 0.85 : 0.45}" stroke-width="${l.level === 'A' ? 2.2 : l.level === 'B' ? 1.6 : 1.1}" ${l.level === 'D' ? 'stroke-dasharray="4 3"' : ''} marker-end="url(#ar${l.level})"/>`;
-      if (on) badge.push([i === mid - 1 ? x1 : x2, i === mid - 1 ? y1 : y2, col, SIGN_LABEL[l.sign]]);
+      const ecls = trCls(trPairs.has(l.src + '\u0001' + l.dst));
+      sv += `<path${ecls ? ` class="${ecls}"` : ''} d="M${x1},${y1} C${cx},${y1} ${cx},${y2} ${x2 - 4},${y2}" fill="none" stroke="${col}" stroke-opacity="${on ? 0.85 : 0.45}" stroke-width="${l.level === 'A' ? 2.2 : l.level === 'B' ? 1.6 : 1.1}" ${l.level === 'D' ? 'stroke-dasharray="4 3"' : ''} marker-end="url(#ar${l.level})"/>`;
+      if (on) badge.push([i === mid - 1 ? x1 : x2, i === mid - 1 ? y1 : y2, col, SIGN_LABEL[l.sign], ecls]);
     }
   }
-  /** @param {[number, number, string, string]} b */
-  const badgeSvg = ([x, y, col, sg]) =>
-    `<g><circle cx="${x}" cy="${y}" r="7.5" fill="#262626" stroke="${col}" stroke-width="1.2"/><text x="${x}" y="${y + 3.6}" font-size="11" fill="${col}" text-anchor="middle" font-weight="700">${esc(sg)}</text></g>`;
+  /** @param {[number, number, string, string, string]} b */
+  const badgeSvg = ([x, y, col, sg, cls]) =>
+    `<g${cls ? ` class="${cls}"` : ''}><circle cx="${x}" cy="${y}" r="7.5" fill="#262626" stroke="${col}" stroke-width="1.2"/><text x="${x}" y="${y + 3.6}" font-size="11" fill="${col}" text-anchor="middle" font-weight="700">${esc(sg)}</text></g>`;
   badge.forEach((b) => (sv += badgeSvg(b)));
   const bdg = badge.splice(0);
   cols.forEach((c, i) =>
@@ -151,8 +164,9 @@ export function flatHtml(graph, state, nid) {
       const ls = wrap(x.name, hop === 1 && bw > 100 ? Math.floor(bw / 12) : 7);
       const col = CC[x.cat];
       const attr = me ? '' : ` data-act="go" data-id="${esc(x.id)}"`;
+      const ncls = trCls(trNodes.has(x.id));
       sv +=
-        `<g class="bx"${attr}><rect x="${X}" y="${Y}" width="${bw}" height="${bh}" rx="8" fill="${me ? col : col + '2e'}" stroke="${col}" stroke-width="${me ? 0 : 1.2}"/>` +
+        `<g class="bx${ncls ? ' ' + ncls : ''}"${attr}><rect x="${X}" y="${Y}" width="${bw}" height="${bh}" rx="8" fill="${me ? col : col + '2e'}" stroke="${col}" stroke-width="${me ? 0 : 1.2}"/>` +
         ls
           .map(
             (t, k) =>

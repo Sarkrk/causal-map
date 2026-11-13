@@ -90,6 +90,6 @@
 
 /** @typedef {{kind:'loop-R'|'loop-B'|'confounder'|'correlation-only', nodes:string[], edges?:string[], message:string}} SimWarning */
 
-/** @typedef {{start:string, shockSign:1|-1, regime:string|null, impacts:SimImpact[], paths:ScoredPath[], warnings:SimWarning[]}} SimResult */
+/** @typedef {{start:string, shockSign:1|-1, regime:string|null, impacts:SimImpact[], paths:ScoredPath[], warnings:SimWarning[], truncated?:boolean}} SimResult */
 
 export {};
