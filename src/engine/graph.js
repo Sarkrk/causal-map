@@ -10,6 +10,28 @@
 export const SIGN_LABEL = { '+': '+', '-': '\u2212', '±': '±' };
 
 /** 등급 → 점수(루프·경로 정렬용, A가 가장 강함). */
+/**
+ * 노드 이름·별칭(aka) 대소문자 무시 부분일치 검색. name 일치가 aka 일치보다 먼저(각 그룹은 원래 순서).
+ * @param {import('../types.js').NodeData[]} nodes
+ * @param {string} query
+ * @param {(n: import('../types.js').NodeData) => boolean} [keep]  결과에 남길 노드 조건
+ * @returns {import('../types.js').NodeData[]}
+ */
+export function searchNodes(nodes, query, keep) {
+  const v = query.trim().toLowerCase();
+  if (!v) return [];
+  /** @type {import('../types.js').NodeData[]} */
+  const byName = [];
+  /** @type {import('../types.js').NodeData[]} */
+  const byAka = [];
+  for (const n of nodes) {
+    if (keep && !keep(n)) continue;
+    if (n.name.toLowerCase().includes(v)) byName.push(n);
+    else if (Array.isArray(n.aka) && n.aka.some((a) => typeof a === 'string' && a.toLowerCase().includes(v))) byAka.push(n);
+  }
+  return [...byName, ...byAka];
+}
+
 export const LEVEL_GRADE = { A: 0, B: 1, C: 2, D: 3 };
 
 /**

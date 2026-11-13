@@ -12,7 +12,11 @@ const CATS = ['Real_Economy', 'Inflation_Labor', 'Policy', 'Financial_Market', '
 const SIGNS = ['+', '-', '±'];
 const LEVELS = ['A', 'B', 'C', 'D'];
 const NODE_REQUIRED = ['id', 'name', 'cat'];
-const NODE_KEYS = ['id', 'name', 'cat', 'layer', 'series'];
+const NODE_KEYS = ['id', 'name', 'cat', 'layer', 'series', 'desc', 'descSrc', 'aka'];
+const DESC_MAX = 240;
+const DESC_SRC_MAX = 120;
+const AKA_MAX_N = 12;
+const AKA_MAX_LEN = 40;
 const EDGE_REQUIRED = ['id', 'src', 'dst', 'sign', 'level', 'status', 'note', 'r', 'rsrc', 'evidence'];
 const EDGE_KEYS = [...EDGE_REQUIRED, 'cond', 'lag', 'regime', 'strength'];
 const EVIDENCE_KEYS = ['kind', 'stance'];
@@ -107,6 +111,37 @@ function checkMeta(meta, errors) {
 }
 
 /**
+ * 노드 선택 키 desc·descSrc·aka 검사(null·생략 허용).
+ * @param {Record<string, any>} n
+ * @param {string} label
+ * @param {string[]} errors
+ * @returns {void}
+ */
+function checkNodeDesc(n, label, errors) {
+  for (const [k, max] of /** @type {[string, number][]} */ ([['desc', DESC_MAX], ['descSrc', DESC_SRC_MAX]])) {
+    const v = n[k];
+    if (v === undefined || v === null) continue;
+    if (typeof v !== 'string') errors.push(`${label}: ${k} must be a string or null`);
+    else if (v.length < 1 || v.length > max) errors.push(`${label}: ${k} length must be 1~${max}`);
+  }
+  const a = n.aka;
+  if (a === undefined || a === null) return;
+  if (!Array.isArray(a)) {
+    errors.push(`${label}: aka must be an array or null`);
+    return;
+  }
+  if (a.length > AKA_MAX_N) errors.push(`${label}: aka must have at most ${AKA_MAX_N} items`);
+  /** @type {Set<string>} */
+  const seen = new Set();
+  a.forEach((x, j) => {
+    if (typeof x !== 'string') errors.push(`${label}: aka[${j}] must be a string`);
+    else if (x.length < 1 || x.length > AKA_MAX_LEN) errors.push(`${label}: aka[${j}] length must be 1~${AKA_MAX_LEN}`);
+    else if (seen.has(x)) errors.push(`${label}: aka[${j}] duplicate "${x}"`);
+    else seen.add(x);
+  });
+}
+
+/**
  * 노드 배열 검사. 유효한 노드 id 집합을 반환한다.
  * @param {unknown} nodes
  * @param {string[]} errors
@@ -132,6 +167,7 @@ function checkNodes(nodes, errors) {
     if ('cat' in n && !CATS.includes(n.cat)) errors.push(`${label}: cat "${String(n.cat)}" invalid`);
     if ('layer' in n && n.layer !== null && !Number.isInteger(n.layer)) errors.push(`${label}: layer must be integer or null`);
     if ('series' in n && n.series !== null && typeof n.series !== 'string') errors.push(`${label}: series must be string or null`);
+    checkNodeDesc(n, label, errors);
     if (nonEmptyStr(n.id)) {
       if (ids.has(n.id)) errors.push(`duplicate node id "${n.id}"`);
       ids.add(n.id);

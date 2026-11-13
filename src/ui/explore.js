@@ -4,7 +4,7 @@
 // 계산 필터는 현재 가시 인과 엣지(causalVisible)만 쓴다.
 import { findLoops as engineFindLoops } from '../engine/cycles.js';
 import { findPaths as engineFindPaths } from '../engine/paths.js';
-import { SIGN_LABEL } from '../engine/graph.js';
+import { SIGN_LABEL, searchNodes } from '../engine/graph.js';
 import { causalVisible } from '../store/select.js';
 import { esc } from '../render/flatmap.js';
 
@@ -314,7 +314,7 @@ export function pathListHtml(g, st) {
 export function suggestHtml(g, query, sel) {
   const v = query.trim().toLowerCase();
   if (!v) return '';
-  const m = g.nodes.filter((n) => n.id !== sel && n.name.toLowerCase().includes(v)).slice(0, SUGGEST_MAX);
+  const m = searchNodes(g.nodes, v, (n) => n.id !== sel).slice(0, SUGGEST_MAX);
   if (m.length === 0) return '<span class="sub">없음</span>';
   return m
     .map((n) => `<button class="chip" data-act="pathto" data-id="${esc(n.id)}">${esc(n.name)}</button>`)
