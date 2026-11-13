@@ -17,8 +17,17 @@ import { LEVELS, CATEGORY_ORDER } from './labels.js';
  * @property {string|null} selected
  * @property {1|2} hop
  * @property {'both'|'up'|'down'} dir
- * @property {'map'|'in'|'out'|'cor'} tab
+ * @property {'map'|'in'|'out'|'cor'|'loop'|'path'} tab
  * @property {boolean} flatAll
+ * @property {Trace|null} trace    루프·경로 탭에서 고른 한 개(캔버스·관계도 강조용)
+ * @property {string|null} pathTo   경로 탭의 도착 노드 id
+ */
+
+/**
+ * @typedef {Object} Trace
+ * @property {'loop'|'path'} kind
+ * @property {string[]} nodes   순서대로
+ * @property {string[]} edges   엣지 id 순서대로
  */
 
 /**
@@ -45,8 +54,12 @@ import { LEVELS, CATEGORY_ORDER } from './labels.js';
  *   | {type:'toggle', key:'showNR'|'showCor'|'labAll'|'hideOrph'|'autoSpin'|'wobble'}
  *   | {type:'setHop', hop:1|2}
  *   | {type:'setDir', dir:'both'|'up'|'down'}
- *   | {type:'setTab', tab:'map'|'in'|'out'|'cor'}
- *   | {type:'toggleFlatAll'}} Action
+ *   | {type:'setTab', tab:'map'|'in'|'out'|'cor'|'loop'|'path'}
+ *   | {type:'toggleFlatAll'}
+ *   | {type:'setTrace', trace:Trace}
+ *   | {type:'clearTrace'}
+ *   | {type:'setPathTo', id:string|null}
+ *   | {type:'restoreView', selected:string|null, tab?:string, dir?:string, hop?:number, pathTo?:string|null}} Action
  */
 
 /** @typedef {(state: AppState, prev: AppState, action: Action) => void} Listener */
@@ -60,7 +73,7 @@ import { LEVELS, CATEGORY_ORDER } from './labels.js';
  */
 
 const DIRS = ['both', 'up', 'down'];
-const TABS = ['map', 'in', 'out', 'cor'];
+const TABS = ['map', 'in', 'out', 'cor', 'loop', 'path'];
 const FILTER_KEYS = ['showNR', 'showCor'];
 const PREF_KEYS = ['labAll', 'hideOrph', 'autoSpin', 'wobble'];
 
@@ -72,7 +85,7 @@ const PREF_KEYS = ['labAll', 'hideOrph', 'autoSpin', 'wobble'];
 export function initialState(categories) {
   return {
     filters: { levels: LEVELS.slice(), cats: categories.slice(), thr: 0, showNR: true, showCor: false },
-    view: { selected: null, hop: 1, dir: 'both', tab: 'in', flatAll: false },
+    view: { selected: null, hop: 1, dir: 'both', tab: 'in', flatAll: false, trace: null, pathTo: null },
     prefs: { labAll: false, hideOrph: true, autoSpin: true, wobble: true },
   };
 }
@@ -97,9 +110,9 @@ function defaultStorage() {
 function reduce(s, a) {
   switch (a.type) {
     case 'select':
-      return { ...s, view: { ...s.view, selected: a.id, flatAll: false, tab: 'map' } };
+      return { ...s, view: { ...s.view, selected: a.id, flatAll: false, tab: 'map', trace: null, pathTo: null } };
     case 'deselect':
-      return { ...s, view: { ...s.view, selected: null } };
+      return { ...s, view: { ...s.view, selected: null, trace: null, pathTo: null } };
     case 'toggleLevel': {
       const on = s.filters.levels.includes(a.level);
       const levels = LEVELS.filter((l) => (l === a.level ? !on : s.filters.levels.includes(l)));
@@ -131,9 +144,36 @@ function reduce(s, a) {
     case 'setDir':
       return DIRS.includes(a.dir) ? { ...s, view: { ...s.view, dir: a.dir } } : s;
     case 'setTab':
-      return TABS.includes(a.tab) ? { ...s, view: { ...s.view, tab: a.tab } } : s;
+      return TABS.includes(a.tab) ? { ...s, view: { ...s.view, tab: a.tab, trace: null } } : s;
     case 'toggleFlatAll':
       return { ...s, view: { ...s.view, flatAll: !s.view.flatAll } };
+    case 'setTrace': {
+      const t = a.trace;
+      if (!t || (t.kind !== 'loop' && t.kind !== 'path') || !Array.isArray(t.nodes) || !Array.isArray(t.edges)) return s;
+      return { ...s, view: { ...s.view, trace: { kind: t.kind, nodes: t.nodes.slice(), edges: t.edges.slice() } } };
+    }
+    case 'clearTrace':
+      return s.view.trace ? { ...s, view: { ...s.view, trace: null } } : s;
+    case 'setPathTo':
+      return { ...s, view: { ...s.view, pathTo: typeof a.id === 'string' ? a.id : null, trace: null } };
+    case 'restoreView': {
+      // 주소(#...)·뒤로 가기 복원용. 값 검증은 여기서, 노드 존재 확인은 호출자가 한다.
+      const v = s.view;
+      const sel = typeof a.selected === 'string' ? a.selected : null;
+      return {
+        ...s,
+        view: {
+          ...v,
+          selected: sel,
+          tab: sel && TABS.includes(/** @type {any} */ (a.tab)) ? /** @type {View['tab']} */ (a.tab) : sel ? 'map' : v.tab,
+          dir: DIRS.includes(/** @type {any} */ (a.dir)) ? /** @type {View['dir']} */ (a.dir) : v.dir,
+          hop: a.hop === 1 || a.hop === 2 ? a.hop : v.hop,
+          pathTo: sel && typeof a.pathTo === 'string' ? a.pathTo : null,
+          trace: null,
+          flatAll: false,
+        },
+      };
+    }
     default:
       throw new TypeError(`unknown action: ${String(/** @type {{type?:unknown}} */ (a).type)}`);
   }

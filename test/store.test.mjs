@@ -32,7 +32,7 @@ test('초기값은 원본 기본값과 같다', () => {
   assert.equal(st.filters.showNR, true);
   assert.equal(st.filters.showCor, false);
   assert.deepEqual(st.prefs, { labAll: false, hideOrph: true, autoSpin: true, wobble: true });
-  assert.deepEqual(st.view, { selected: null, hop: 1, dir: 'both', tab: 'in', flatAll: false });
+  assert.deepEqual(st.view, { selected: null, hop: 1, dir: 'both', tab: 'in', flatAll: false, trace: null, pathTo: null });
 });
 
 test('각 action이 상태를 바꾸고 이전 객체는 그대로 둔다', () => {
