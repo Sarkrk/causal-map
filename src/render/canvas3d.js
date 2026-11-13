@@ -3,16 +3,29 @@
 // 물리 필드는 데이터 객체가 아니라 이 파일의 Body(Map<id, Body>)에 둔다.
 import { CC, GC, categoriesPresent } from '../store/labels.js';
 import { visible, emphasis } from '../store/select.js';
+import {
+  createLayout,
+  readLayout,
+  writeLayout,
+  clearLayout,
+  shouldDraw,
+  DEFAULT_SEED,
+  RESTORE_ALPHA,
+  SETTLE_ALPHA,
+} from './layout.js';
 
 /** @typedef {import('../types.js').Graph} Graph */
 /** @typedef {import('../types.js').NodeData} NodeData */
 /** @typedef {import('../types.js').EdgeData} EdgeData */
 /** @typedef {import('../types.js').CorData} CorData */
 /** @typedef {import('../store/store.js').Store} Store */
+/** @typedef {import('./layout.js').LayoutStorage} LayoutStorage */
 
 /**
  * @typedef {Object} Body
  * @property {NodeData} d
+ * @property {string} id   d.id (물리 계산용)
+ * @property {string} cat  d.cat (물리 계산용)
  * @property {number} deg
  * @property {number} rad
  * @property {number} ph
@@ -73,6 +86,16 @@ import { visible, emphasis } from '../store/select.js';
 
 const F = 650;
 
+/** 기본 배치 저장소(localStorage). 접근이 막혀 있으면 undefined. */
+/** @returns {LayoutStorage|undefined} */
+function safeStorage() {
+  try {
+    return globalThis.localStorage ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * @param {Partial<Gesture>} o
  * @returns {Gesture}
@@ -89,8 +112,9 @@ function gesture(o) {
  * @param {HTMLCanvasElement} cv
  * @param {Graph} graph
  * @param {Store} store
- * @param {{onPointerDown?: () => void}} [opts]
- * @returns {{zoomBy: (f: number) => void, fit: (anim: boolean) => void, reseed: () => void}}
+ * @param {{onPointerDown?: () => void, storage?: LayoutStorage|null, version?: string}} [opts]
+ *   storage: 배치 저장소(기본 localStorage, 테스트는 가짜 주입). version: meta.version(다르면 저장 배치 무시).
+ * @returns {{zoomBy: (f: number) => void, fit: (anim: boolean) => void, reseed: () => void, isRunning: () => boolean}}
  */
 export function createCanvas3D(cv, graph, store, opts = {}) {
   const ctx0 = cv.getContext('2d');
@@ -114,7 +138,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
   const bodies = graph.nodes.map((d, i) => {
     const deg = graph.deg.get(d.id) ?? 0;
     return {
-      d, deg, rad: 3.5 + Math.sqrt(deg) * 1.9, ph: i * 2.399,
+      d, id: d.id, cat: d.cat, deg, rad: 3.5 + Math.sqrt(deg) * 1.9, ph: i * 2.399,
       x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, fx: null, fy: null, fz: null,
       sx: 0, sy: 0, sf: 1, sz: 0, fog: 1,
     };
@@ -131,8 +155,25 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
   /** @type {Cam} */
   const cam = { cx: 0, cy: 0, cz: 0, k: 1, yaw: 0.5, pitch: -0.3, px: 0, py: 0 };
   let spin = { y: 0, p: 0 };
-  let alpha = 1;
   let lastAct = -1e9;
+  // 배치: 저장 좌표가 있고 버전이 같으면 그 좌표로 시작(alpha 낮게), 아니면 시드 배치(DEFAULT_SEED).
+  const storage = opts.storage !== undefined ? opts.storage : safeStorage();
+  const version = String(opts.version ?? '');
+  const saved = readLayout(storage, version);
+  const layout = createLayout({
+    bodies,
+    links: [],
+    centers: CP,
+    seed: saved ? saved.seed : DEFAULT_SEED,
+    restore: saved ? saved.pos : null,
+    alpha: saved ? RESTORE_ALPHA : 1,
+  });
+  /** 배치 좌표가 바뀌었고 아직 저장 전. alpha가 SETTLE_ALPHA 아래로 내려간 직후 1회 저장한다. */
+  let saveDue = true;
+  /** 깨우기 요청(wake) 대기: 다음 프레임 한 번은 그린다. */
+  let wakeFlag = false;
+  /** rAF 루프가 돌고 있는지. */
+  let running = false;
   /** @type {{f: Cam, t: Partial<Cam>, s: number}|null} */
   let fly = null;
   const T0 = performance.now();
@@ -146,85 +187,22 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
   /** @type {Link[]} */
   let VL = [];
 
-  /** 원본 recompute(): 가시 노드·링크 갱신 + alpha를 0.5 이상으로. */
-  function recompute() {
+  /** 가시 노드·링크를 다시 모은다(위치는 그대로). */
+  function refresh() {
     vis = visible(graph, store.get());
     VB = bodies.filter((b) => vis.nodes.has(b.d.id));
     VS = new Set(VB);
     VL = vis.causal
       .map((e) => /** @type {Link} */ ({ k: 'c', id: e.id, a: bod(e.src), b: bod(e.dst), level: e.level, r: e.r }))
       .concat(vis.cors.map((c) => /** @type {Link} */ ({ k: 'r', id: '', a: bod(c.src), b: bod(c.dst), level: '', r: c.r })));
-    alpha = Math.max(alpha, 0.5);
+    layout.setActive(VB, VL);
   }
 
-  function seed() {
-    bodies.forEach((n) => {
-      const c = CP[n.d.cat] || [0, 0, 0];
-      n.x = c[0] + (Math.random() - 0.5) * 140;
-      n.y = c[1] + (Math.random() - 0.5) * 140;
-      n.z = c[2] + (Math.random() - 0.5) * 140;
-      n.vx = n.vy = n.vz = 0;
-    });
-  }
-
-  function tick() {
-    const A = VB;
-    for (let i = 0; i < A.length; i++)
-      for (let j = i + 1; j < A.length; j++) {
-        const a = A[i];
-        const b = A[j];
-        let dx = a.x - b.x;
-        let dy = a.y - b.y;
-        let dz = a.z - b.z;
-        const d2 = dx * dx + dy * dy + dz * dz + 0.01;
-        if (d2 > 200000) continue;
-        const d = Math.sqrt(d2);
-        const f = ((1700 / d2) * alpha) * (1 + (a.rad + b.rad) / 12);
-        dx /= d;
-        dy /= d;
-        dz /= d;
-        a.vx += dx * f;
-        a.vy += dy * f;
-        a.vz += dz * f;
-        b.vx -= dx * f;
-        b.vy -= dy * f;
-        b.vz -= dz * f;
-      }
-    VL.forEach((l) => {
-      if (!VS.has(l.a) || !VS.has(l.b)) return;
-      const dx = l.b.x - l.a.x;
-      const dy = l.b.y - l.a.y;
-      const dz = l.b.z - l.a.z;
-      const d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
-      const len = l.k === 'r' ? 120 : 85;
-      const f = ((d - len) / d) * (l.k === 'r' ? 0.006 : 0.02) * alpha;
-      l.a.vx += dx * f;
-      l.a.vy += dy * f;
-      l.a.vz += dz * f;
-      l.b.vx -= dx * f;
-      l.b.vy -= dy * f;
-      l.b.vz -= dz * f;
-    });
-    A.forEach((n) => {
-      const c = CP[n.d.cat] || [0, 0, 0];
-      n.vx += ((c[0] - n.x) * 0.004 - n.x * 0.0015) * alpha;
-      n.vy += ((c[1] - n.y) * 0.004 - n.y * 0.0015) * alpha;
-      n.vz += ((c[2] - n.z) * 0.004 - n.z * 0.0015) * alpha;
-      if (n.fx != null && n.fy != null && n.fz != null) {
-        n.x = n.fx;
-        n.y = n.fy;
-        n.z = n.fz;
-        n.vx = n.vy = n.vz = 0;
-      } else {
-        n.vx *= 0.6;
-        n.vy *= 0.6;
-        n.vz *= 0.6;
-        n.x += n.vx;
-        n.y += n.vy;
-        n.z += n.vz;
-      }
-    });
-    alpha *= 0.985;
+  /** 원본 recompute(): 가시 노드·링크 갱신 + alpha를 0.5 이상으로. */
+  function recompute() {
+    refresh();
+    layout.reheat(0.5);
+    saveDue = true;
   }
 
   /** @param {number} x @param {number} y @param {number} z @returns {[number, number, number]} */
@@ -391,6 +369,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
   /** @param {Partial<Cam>} t */
   function flyTo(t) {
     fly = { f: { ...cam }, t, s: performance.now() };
+    wake();
   }
 
   function stepFly() {
@@ -422,6 +401,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     const t = { cx: c[0], cy: c[1], cz: c[2], px: 0, py: 0, k: Math.min(W, H - 150) / (2 * R * 1.3 + 40) };
     if (anim) flyTo(t);
     else Object.assign(cam, t);
+    wake();
   }
 
   /**
@@ -484,6 +464,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
   cv.addEventListener('contextmenu', (e) => e.preventDefault());
   cv.addEventListener('pointerdown', (e) => {
     cv.setPointerCapture(e.pointerId);
+    wake();
     P.set(e.pointerId, { x: e.clientX, y: e.clientY });
     opts.onPointerDown?.();
     lastAct = performance.now();
@@ -510,6 +491,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     if (!P.has(e.pointerId) || !gs) return;
     P.set(e.pointerId, { x: e.clientX, y: e.clientY });
     lastAct = performance.now();
+    wake();
     if (gs.pinch && P.size >= 2) {
       const [a, b] = [...P.values()];
       const d = Math.hypot(a.x - b.x, a.y - b.y);
@@ -535,7 +517,8 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
       n.fx = n.x = wx;
       n.fy = n.y = wy;
       n.fz = n.z = wz;
-      alpha = Math.max(alpha, 0.3);
+      layout.reheat(0.3);
+      saveDue = true;
     } else if (gs.pan) {
       cam.px += dx;
       cam.py += dy;
@@ -555,6 +538,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
   function up(e) {
     if (!P.has(e.pointerId)) return;
     P.delete(e.pointerId);
+    wake();
     if (!gs) return;
     if (!gs.pinch && !gs.moved && performance.now() - gs.t < 500) {
       if (gs.node) store.dispatch({ type: 'select', id: gs.node.d.id });
@@ -578,12 +562,14 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
       e.preventDefault();
       lastAct = performance.now();
       zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY);
+      wake();
     },
     { passive: false },
   );
 
   // 원본 select()/deselect()의 캔버스 쪽 동작. 가시성 재계산은 원본과 같은 조건에서만 한다.
   store.subscribe((st, prev, action) => {
+    wake();
     if (st.filters !== prev.filters || st.prefs !== prev.prefs) recompute();
     if (action.type === 'select') {
       if (!VS.has(bod(action.id))) recompute();
@@ -599,29 +585,84 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     }
   });
 
-  /** 원본 loop() 한 프레임 */
-  function loop() {
+  /** 원본 loop()의 물리·회전 한 단계(그리기 제외). */
+  function step() {
     const now = performance.now();
     const st = store.get();
-    if (alpha > 0.004) tick();
+    if (layout.alpha > SETTLE_ALPHA) layout.tick();
     if (fly) stepFly();
     if (!gs) {
       cam.yaw += spin.y;
       cam.pitch += spin.p;
       spin.y *= 0.93;
       spin.p *= 0.93;
+      if (Math.abs(spin.y) < 1e-6) spin.y = 0;
+      if (Math.abs(spin.p) < 1e-6) spin.p = 0;
       if (st.prefs.autoSpin && now - lastAct > 2500 && Math.abs(spin.y) < 0.002) cam.yaw += 0.0018;
     }
     cam.pitch = Math.max(-1.45, Math.min(1.45, cam.pitch));
+  }
+
+  /** 정지 직후 1회 배치 저장. */
+  function maybeSave() {
+    if (saveDue && layout.alpha <= SETTLE_ALPHA) {
+      saveDue = false;
+      writeLayout(storage, version, layout.seed, layout.positions());
+    }
+  }
+
+  /** @returns {import('./layout.js').LoopState} */
+  function loopState() {
+    const st = store.get();
+    return {
+      hidden: typeof document !== 'undefined' && document.hidden,
+      alpha: layout.alpha,
+      autoSpin: st.prefs.autoSpin,
+      wobble: st.prefs.wobble,
+      inertia: Math.abs(spin.y) + Math.abs(spin.p),
+      pointer: P.size > 0 || gs !== null,
+      flying: fly !== null,
+      dirty: wakeFlag,
+    };
+  }
+
+  /** 원본 loop() 한 프레임. 멈출 조건이면 draw 없이 루프를 끝낸다(rAF 재등록 안 함). */
+  function loop() {
+    maybeSave();
+    if (!shouldDraw(loopState())) {
+      running = false;
+      return;
+    }
+    step();
     draw();
+    wakeFlag = false;
+    maybeSave();
     requestAnimationFrame(loop);
   }
 
+  /** 루프를 깨운다. 멈춰 있었으면 다음 프레임에 다시 돈다. */
+  function wake() {
+    wakeFlag = true;
+    if (running) return;
+    if (typeof document !== 'undefined' && document.hidden) return;
+    running = true;
+    requestAnimationFrame(loop);
+  }
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) wake();
+    });
+  }
+
   rs();
-  window.addEventListener('resize', rs);
-  seed();
-  recompute();
-  for (let i = 0; i < 350; i++) tick();
+  window.addEventListener('resize', () => {
+    rs();
+    wake();
+  });
+  refresh();
+  if (!saved) for (let i = 0; i < 350; i++) layout.tick();
+  running = true;
   fit(false);
   loop();
 
@@ -629,16 +670,23 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     /** @param {number} f */
     zoomBy(f) {
       zoomAt(f, W / 2, H / 2);
+      wake();
     },
     /** @param {boolean} anim */
     fit(anim) {
       fit(anim);
     },
     reseed() {
-      seed();
-      alpha = 1;
-      for (let i = 0; i < 250; i++) tick();
+      layout.reseed(layout.nextSeed());
+      clearLayout(storage);
+      for (let i = 0; i < 250; i++) layout.tick();
+      saveDue = true;
       fit(true);
+      wake();
+    },
+    /** 테스트용 읽기 전용: rAF 루프가 돌고 있는지. */
+    isRunning() {
+      return running;
     },
   };
 }

@@ -41,7 +41,11 @@ async function boot() {
   });
 
   const cv = /** @type {HTMLCanvasElement} */ (byId('cv'));
-  const canvas = createCanvas3D(cv, graph, store, { onPointerDown: () => search.closeSug() });
+  // version: 배치 저장('cg_layout')은 데이터 버전이 같을 때만 쓴다.
+  const canvas = createCanvas3D(cv, graph, store, {
+    onPointerDown: () => search.closeSug(),
+    version: String(data.meta?.version ?? ''),
+  });
 
   const sheets = initSheets(
     {
