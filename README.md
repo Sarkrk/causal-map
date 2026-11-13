@@ -129,7 +129,8 @@
 
 | 파일 | 내용 |
 |---|---|
-| `index.html` · `app.js` | 앱 화면 (외부 라이브러리 없는 캔버스 그래프) |
+| `index.html` · `src/` | 앱 화면 (외부 라이브러리 없는 캔버스 그래프, ES 모듈: `engine` 그래프 계산 · `schema` 데이터 형식 검증 · `store` 화면 상태 · `render` 그리기 · `ui` 조작) |
+| `test/` | 계산 엔진·데이터 형식·상태 단위 테스트 (`node --test test/*.test.mjs`) |
 | `graph.json` | 데이터 (`meta.version`으로 갱신 여부 판단) |
 | `sw.js` · `manifest.webmanifest` · `icon-*.png` | 홈 화면 앱·오프라인 지원 |
 | `WORKLOG.md` | 작업 이력 |

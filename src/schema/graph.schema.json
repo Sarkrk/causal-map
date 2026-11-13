@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "causal-map/graph.v1.json",
+  "title": "causal-map graph.json v1",
+  "type": "object",
+  "required": ["schemaVersion", "meta", "nodes", "edges", "cors"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "meta": {
+      "type": "object",
+      "required": ["version", "generated", "nodes", "edges", "levels"],
+      "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "generated": { "type": "string" },
+        "nodes": { "type": "integer", "minimum": 0 },
+        "edges": { "type": "integer", "minimum": 0 },
+        "levels": { "type": "object", "additionalProperties": { "type": "integer" } }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "cat"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "cat": { "enum": ["Real_Economy", "Inflation_Labor", "Policy", "Financial_Market", "External_Sector", "Industry_AI", "Other"] },
+          "layer": { "type": ["integer", "null"] },
+          "series": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "src", "dst", "sign", "level", "status", "note", "r", "rsrc", "evidence"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "src": { "type": "string", "minLength": 1 },
+          "dst": { "type": "string", "minLength": 1 },
+          "sign": { "enum": ["+", "-", "±"] },
+          "level": { "enum": ["A", "B", "C", "D"] },
+          "status": { "type": "string" },
+          "note": { "type": "string" },
+          "cond": { "type": ["string", "null"] },
+          "lag": { "type": ["string", "null"] },
+          "strength": { "type": ["string", "null"] },
+          "r": { "type": ["number", "null"] },
+          "rsrc": { "type": "string" },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["kind", "stance"],
+              "additionalProperties": false,
+              "properties": { "kind": { "type": "string" }, "stance": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "cors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["src", "dst", "r"],
+        "properties": {
+          "src": { "type": "string" },
+          "dst": { "type": "string" },
+          "r": { "type": "number" },
+          "n": { "type": ["integer", "null"] }
+        }
+      }
+    }
+  }
+}

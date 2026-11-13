@@ -73,14 +73,6 @@ input[type=range]{width:100%;accent-color:var(--acc)}
  <div class="sec">표시</div><div class="row"><button class="chip" id="tcor">상관선(점선)</button><button class="chip" id="tlab">라벨 항상</button><button class="chip on" id="torp">고립 노드 숨김</button><button class="chip on" id="tspin">자동 회전</button><button class="chip on" id="twob">흔들림</button><button class="chip" id="trel">다시 배치</button></div>
  <p class="sub" style="margin-top:16px;line-height:1.5">배경 스와이프: 3D 회전(튕기면 관성) · 두 손가락: 확대·이동 · 점 탭: 관련 노드만 강조 + 상세 · 점 끌기: 위치 이동 · 빈 곳 탭: 해제 · 가만히 두면 천천히 회전</p>
 </div></div>
-<script>
-(function(){
- const K='cg_data';let d=null;try{d=JSON.parse(localStorage.getItem(K)||'null')}catch(e){}
- function start(x){window.__D=x;const s=document.createElement('script');s.src='app.js?v=7f164821';document.body.appendChild(s)}
- if(d&&d.nodes){start(d);return}
- fetch('graph.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(x=>{try{localStorage.setItem(K,JSON.stringify(x))}catch(e){}start(x)})
-  .catch(e=>{document.getElementById('stat').textContent='데이터를 받지 못했습니다. 인터넷 연결 후 다시 열어 주세요.'});
-})();
-if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
-</script>
+<script type="module" src="src/main.js"></script>
+<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});</script>
 </body></html>
