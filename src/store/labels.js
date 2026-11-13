@@ -9,6 +9,12 @@ export const CN = {
   Financial_Market: '금융·자산',
   External_Sector: '대외부문',
   Industry_AI: '산업·AI',
+  Labor_Demographics: '노동·인구',
+  Institutions: '제도·거버넌스',
+  Environment: '환경·자원',
+  Fiscal: '재정',
+  Money_Credit: '화폐·신용',
+  Trade_Global: '무역·글로벌',
   Other: '기타',
 };
 
@@ -20,6 +26,12 @@ export const CC = {
   Financial_Market: '#7aa2f7',
   External_Sector: '#2ac3de',
   Industry_AI: '#bb9af7',
+  Labor_Demographics: '#fb923c',
+  Institutions: '#818cf8',
+  Environment: '#4ade80',
+  Fiscal: '#fde047',
+  Money_Credit: '#22d3ee',
+  Trade_Global: '#60a5fa',
   Other: '#a9b1d6',
 };
 

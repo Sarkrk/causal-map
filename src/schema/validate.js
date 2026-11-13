@@ -8,7 +8,7 @@ import { LAGS, REGIMES } from './v2.js';
 
 const TOP_KEYS = ['schemaVersion', 'meta', 'nodes', 'edges', 'cors'];
 const META_REQUIRED = ['version', 'generated', 'nodes', 'edges', 'levels'];
-const CATS = ['Real_Economy', 'Inflation_Labor', 'Policy', 'Financial_Market', 'External_Sector', 'Industry_AI', 'Other'];
+const CATS = ['Real_Economy', 'Inflation_Labor', 'Policy', 'Financial_Market', 'External_Sector', 'Industry_AI', 'Labor_Demographics', 'Institutions', 'Environment', 'Fiscal', 'Money_Credit', 'Trade_Global', 'Other'];
 const SIGNS = ['+', '-', '±'];
 const LEVELS = ['A', 'B', 'C', 'D'];
 const NODE_REQUIRED = ['id', 'name', 'cat'];

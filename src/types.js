@@ -2,7 +2,7 @@
 // 공유 타입 정의(JSDoc). 런타임 코드 없음. 다른 모듈은 `import './types.js'` 없이
 // `/** @typedef {import('../types.js').Edge} Edge */` 형태로 참조한다.
 
-/** @typedef {'Real_Economy'|'Inflation_Labor'|'Policy'|'Financial_Market'|'External_Sector'|'Industry_AI'|'Other'} Category */
+/** @typedef {'Real_Economy'|'Inflation_Labor'|'Policy'|'Financial_Market'|'External_Sector'|'Industry_AI'|'Labor_Demographics'|'Institutions'|'Environment'|'Fiscal'|'Money_Credit'|'Trade_Global'|'Other'} Category */
 /** @typedef {'+'|'-'|'±'} Sign   // 데이터는 ASCII '-'. 화면 표시는 '−'(U+2212). */
 /** @typedef {'A'|'B'|'C'|'D'} Level */
 /** @typedef {'immediate'|'short'|'medium'|'long'} Lag   immediate=1개월 미만, short=1~3개월, medium=3~12개월, long=12개월 초과 */

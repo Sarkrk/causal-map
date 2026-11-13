@@ -27,7 +27,7 @@
         "properties": {
           "id": { "type": "string", "minLength": 1 },
           "name": { "type": "string", "minLength": 1 },
-          "cat": { "enum": ["Real_Economy", "Inflation_Labor", "Policy", "Financial_Market", "External_Sector", "Industry_AI", "Other"] },
+          "cat": { "enum": ["Real_Economy", "Inflation_Labor", "Policy", "Financial_Market", "External_Sector", "Industry_AI", "Labor_Demographics", "Institutions", "Environment", "Fiscal", "Money_Credit", "Trade_Global", "Other"] },
           "layer": { "type": ["integer", "null"] },
           "series": { "type": ["string", "null"] },
           "desc": { "type": ["string", "null"], "minLength": 1, "maxLength": 240 },
