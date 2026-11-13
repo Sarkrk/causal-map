@@ -5,6 +5,8 @@
 /** @typedef {'Real_Economy'|'Inflation_Labor'|'Policy'|'Financial_Market'|'External_Sector'|'Industry_AI'|'Other'} Category */
 /** @typedef {'+'|'-'|'±'} Sign   // 데이터는 ASCII '-'. 화면 표시는 '−'(U+2212). */
 /** @typedef {'A'|'B'|'C'|'D'} Level */
+/** @typedef {'immediate'|'short'|'medium'|'long'} Lag   immediate=1개월 미만, short=1~3개월, medium=3~12개월, long=12개월 초과 */
+/** @typedef {string} Regime   정규 어휘는 schema/v2.js의 REGIMES. 어휘 밖 문자열은 validate가 warning. */
 
 /**
  * @typedef {Object} NodeData
@@ -31,7 +33,8 @@
  * @property {string} status  'open'|'contested'|'weak'…
  * @property {string} note
  * @property {string|null} [cond]
- * @property {string|null} [lag]
+ * @property {Lag|null} [lag]          null/생략=미상
+ * @property {Regime|null} [regime]   이 엣지가 활성인 국면. null/생략=상시
  * @property {string|null} [strength]
  * @property {number|null} r
  * @property {string} rsrc
@@ -41,8 +44,8 @@
 /** @typedef {{src:string,dst:string,r:number,n?:number|null}} CorData */
 
 /**
- * @typedef {Object} GraphData   graph.json v1
- * @property {1} schemaVersion
+ * @typedef {Object} GraphData   graph.json v2
+ * @property {2} schemaVersion
  * @property {{version:string,generated:string,nodes:number,edges:number,levels:Object<string,number>}} meta
  * @property {NodeData[]} nodes
  * @property {EdgeData[]} edges
@@ -76,5 +79,17 @@
  * @property {EdgeData[]} edges
  * @property {Sign} sign             부호 곱(± 하나라도 있으면 ±)
  */
+
+// ---- Phase 2 계약용 타입(구현은 아직 없음) ----
+
+/** @typedef {Path & {confidence:number, lagMonths:number, unknownLags:number, minLevel:Level}} ScoredPath */
+
+/** @typedef {{activeRegime?:string|null, maxDepth?:number, edgeFilter?:EdgeFilter, topK?:number}} SimOptions */
+
+/** @typedef {{id:string, score:number, sign:Sign, posMass:number, negMass:number, ambiguousMass:number, minLagMonths:number, depth:number}} SimImpact */
+
+/** @typedef {{kind:'loop-R'|'loop-B'|'confounder'|'correlation-only', nodes:string[], edges?:string[], message:string}} SimWarning */
+
+/** @typedef {{start:string, shockSign:1|-1, regime:string|null, impacts:SimImpact[], paths:ScoredPath[], warnings:SimWarning[]}} SimResult */
 
 export {};

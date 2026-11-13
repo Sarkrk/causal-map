@@ -8,11 +8,11 @@ import { migrate, SCHEMA_VERSION } from '../src/schema/migrate.js';
 import { validateGraph } from '../src/schema/validate.js';
 
 /**
- * 깨뜨려도 원본 픽스처가 영향받지 않도록 v1 깊은 복사본을 만든다.
+ * 깨뜨려도 원본 픽스처가 영향받지 않도록 v1 픽스처를 v2로 올린 깊은 복사본을 만든다(v2 의미 변경: validate는 v2만 받는다).
  * @returns {any}
  */
 function cloneV1() {
-  return structuredClone(v1);
+  return structuredClone(migrate(v1));
 }
 
 test('migrate(v0) → 검증 통과, 개수 83/245/20, 부호에 U+2212 없음', () => {
@@ -54,9 +54,10 @@ test('migrate(v0) 결과가 graph.v1.json 픽스처와 일치', () => {
   assert.deepEqual(g.meta, v1.meta);
 });
 
-test('migrate(v1)는 그대로 통과(같은 객체)', () => {
+test('migrate(v1)는 새 v2 객체를 반환하고 검증 통과', () => {
   const out = migrate(v1);
-  assert.equal(out, v1);
+  assert.notEqual(out, v1);
+  assert.equal(out.schemaVersion, 2);
   assert.equal(validateGraph(out).ok, true);
 });
 

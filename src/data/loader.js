@@ -17,7 +17,7 @@ export const LOAD_FAIL_MSG = '데이터를 받지 못했습니다. 인터넷 연
  */
 
 /**
- * 원본 JSON을 v1으로 바꾸고 검증한다. 실패하면 Error.
+ * 원본 JSON을 v2로 바꾸고 검증한다. 실패하면 Error.
  * @param {unknown} raw
  * @returns {GraphData}
  */

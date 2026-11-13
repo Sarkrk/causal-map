@@ -40,7 +40,7 @@ function mkEdge(id, src, dst, sign, level = 'C') {
  * @returns {Graph}
  */
 function mkGraph(nodes, edges) {
-  return createGraph({ schemaVersion: 1, meta: { version: 't', generated: '', nodes: nodes.length, edges: edges.length, levels: {} }, nodes, edges, cors: [] });
+  return createGraph({ schemaVersion: 2, meta: { version: 't', generated: '', nodes: nodes.length, edges: edges.length, levels: {} }, nodes, edges, cors: [] });
 }
 
 /** 작은 픽스처: A→B(+), B→C(-), C→A(+), C→D(+). D는 고립이 아님. */

@@ -1,6 +1,8 @@
 // @ts-check
-// graph.schema.json(v1) 규칙을 코드로 옮긴 검증기 + 참조 무결성 검사.
+// graph.schema.json(v2) 규칙을 코드로 옮긴 검증기 + 참조 무결성 검사.
 // JSON 스키마 파일은 import하지 않는다(enum·키 목록은 아래 상수로 둔다).
+
+import { LAGS, REGIMES } from './v2.js';
 
 /** @typedef {import('../types.js').GraphData} GraphData */
 
@@ -12,7 +14,7 @@ const LEVELS = ['A', 'B', 'C', 'D'];
 const NODE_REQUIRED = ['id', 'name', 'cat'];
 const NODE_KEYS = ['id', 'name', 'cat', 'layer', 'series'];
 const EDGE_REQUIRED = ['id', 'src', 'dst', 'sign', 'level', 'status', 'note', 'r', 'rsrc', 'evidence'];
-const EDGE_KEYS = [...EDGE_REQUIRED, 'cond', 'lag', 'strength'];
+const EDGE_KEYS = [...EDGE_REQUIRED, 'cond', 'lag', 'regime', 'strength'];
 const EVIDENCE_KEYS = ['kind', 'stance'];
 const COR_REQUIRED = ['src', 'dst', 'r'];
 
@@ -166,13 +168,14 @@ function checkEvidence(ev, label, errors) {
 }
 
 /**
- * 엣지 배열 검사(필드·enum·참조 무결성·자기루프·중복).
+ * 엣지 배열 검사(필드·enum·참조 무결성·자기루프·중복). 어휘 밖 regime은 warnings.
  * @param {unknown} edges
  * @param {Set<string>} nodeIds
  * @param {string[]} errors
+ * @param {string[]} warnings
  * @returns {void}
  */
-function checkEdges(edges, nodeIds, errors) {
+function checkEdges(edges, nodeIds, errors, warnings) {
   if (!Array.isArray(edges)) {
     errors.push('edges: must be an array');
     return;
@@ -200,10 +203,17 @@ function checkEdges(edges, nodeIds, errors) {
     if ('note' in e && typeof e.note !== 'string') errors.push(`${label}: note must be a string`);
     if ('rsrc' in e && typeof e.rsrc !== 'string') errors.push(`${label}: rsrc must be a string`);
     if ('r' in e && e.r !== null && !finiteNum(e.r)) errors.push(`${label}: r must be a number or null`);
-    for (const k of ['cond', 'lag', 'strength']) {
+    for (const k of ['cond', 'strength']) {
       if (k in e && e[k] !== null && e[k] !== undefined && typeof e[k] !== 'string') {
         errors.push(`${label}: ${k} must be a string or null`);
       }
+    }
+    if ('lag' in e && e.lag !== null && e.lag !== undefined && !LAGS.includes(e.lag)) {
+      errors.push(`${label}: lag "${String(e.lag)}" invalid (use ${LAGS.join('|')} or null)`);
+    }
+    if ('regime' in e && e.regime !== null && e.regime !== undefined) {
+      if (typeof e.regime !== 'string') errors.push(`${label}: regime must be a string or null`);
+      else if (!REGIMES.includes(e.regime)) warnings.push(`${label}: regime "${e.regime}" not in vocabulary (${REGIMES.join('|')})`);
     }
     if ('evidence' in e) checkEvidence(e.evidence, label, errors);
 
@@ -256,7 +266,7 @@ function checkCors(cors, nodeIds, errors, warnings) {
 }
 
 /**
- * graph.json v1 객체를 검증한다. 입력은 변경하지 않는다.
+ * graph.json v2 객체를 검증한다. 입력은 변경하지 않는다.
  * @param {unknown} g
  * @returns {{ok:boolean, errors:string[], warnings:string[]}}  ok는 errors가 비었을 때 true. warnings는 ok에 영향 없음.
  */
@@ -270,12 +280,14 @@ export function validateGraph(g) {
   }
   checkUnknownKeys(g, TOP_KEYS, 'top-level', errors);
   checkRequired(g, TOP_KEYS, 'top-level', errors);
-  if ('schemaVersion' in g && g.schemaVersion !== 1) {
-    errors.push(`schemaVersion must be 1 (got ${JSON.stringify(g.schemaVersion)})`);
+  if ('schemaVersion' in g && g.schemaVersion === 1) {
+    errors.push('schemaVersion 1 (v1) data: run migrate() first, then validate');
+  } else if ('schemaVersion' in g && g.schemaVersion !== 2) {
+    errors.push(`schemaVersion must be 2 (got ${JSON.stringify(g.schemaVersion)})`);
   }
   checkMeta(g.meta, errors);
   const nodeIds = checkNodes(g.nodes, errors);
-  checkEdges(g.edges, nodeIds, errors);
+  checkEdges(g.edges, nodeIds, errors, warnings);
   checkCors(g.cors, nodeIds, errors, warnings);
 
   if (Array.isArray(g.nodes) && Array.isArray(g.edges)) {

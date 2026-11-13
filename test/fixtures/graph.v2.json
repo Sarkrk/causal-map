@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 2,
+  "meta": { "version": "fixture-v2", "generated": "", "nodes": 10, "edges": 10, "levels": { "A": 2, "B": 6, "C": 2 } },
+  "nodes": [
+    { "id": "금리", "name": "금리", "cat": "Policy" },
+    { "id": "물가", "name": "물가", "cat": "Inflation_Labor" },
+    { "id": "수요", "name": "수요", "cat": "Real_Economy" },
+    { "id": "기업이익", "name": "기업이익", "cat": "Financial_Market" },
+    { "id": "투자", "name": "투자", "cat": "Real_Economy" },
+    { "id": "위험심리", "name": "위험심리", "cat": "Financial_Market" },
+    { "id": "주가", "name": "주가", "cat": "Financial_Market" },
+    { "id": "환율", "name": "환율", "cat": "Financial_Market" },
+    { "id": "채권금리", "name": "채권금리", "cat": "Financial_Market" },
+    { "id": "코스피변동", "name": "코스피변동", "cat": "Financial_Market" }
+  ],
+  "edges": [
+    { "id": "F1", "src": "수요", "dst": "기업이익", "sign": "+", "level": "A", "status": "open", "note": "강화 루프 R1", "r": null, "rsrc": "", "evidence": [], "lag": "short", "regime": null },
+    { "id": "F2", "src": "기업이익", "dst": "투자", "sign": "+", "level": "B", "status": "open", "note": "강화 루프 R1", "r": null, "rsrc": "", "evidence": [], "lag": "medium", "regime": null },
+    { "id": "F3", "src": "투자", "dst": "수요", "sign": "+", "level": "B", "status": "open", "note": "강화 루프 R1", "r": null, "rsrc": "", "evidence": [], "lag": "short", "regime": null },
+    { "id": "F4", "src": "금리", "dst": "수요", "sign": "-", "level": "A", "status": "open", "note": "균형 루프 B1", "r": null, "rsrc": "", "evidence": [], "lag": "long", "regime": null },
+    { "id": "F5", "src": "수요", "dst": "물가", "sign": "+", "level": "B", "status": "open", "note": "균형 루프 B1", "r": null, "rsrc": "", "evidence": [], "lag": "medium", "regime": null },
+    { "id": "F6", "src": "물가", "dst": "금리", "sign": "+", "level": "C", "status": "open", "note": "균형 루프 B1", "r": null, "rsrc": "", "evidence": [], "lag": "immediate", "regime": null },
+    { "id": "F7", "src": "위험심리", "dst": "주가", "sign": "+", "level": "B", "status": "open", "note": "공통원인: 주가·환율의 부모", "r": null, "rsrc": "", "evidence": [], "lag": "immediate", "regime": null },
+    { "id": "F8", "src": "위험심리", "dst": "환율", "sign": "+", "level": "B", "status": "open", "note": "공통원인: 주가·환율의 부모", "r": null, "rsrc": "", "evidence": [], "lag": "immediate", "regime": null },
+    { "id": "F9", "src": "금리", "dst": "채권금리", "sign": "+", "level": "B", "status": "open", "note": "긴축 국면에서만 활성", "r": null, "rsrc": "", "evidence": [], "lag": "short", "regime": "tightening" },
+    { "id": "F10", "src": "위험심리", "dst": "코스피변동", "sign": "+", "level": "C", "status": "open", "note": "위기 시 활성", "r": null, "rsrc": "", "evidence": [], "lag": null, "regime": "stress" }
+  ],
+  "cors": [{ "src": "주가", "dst": "환율", "r": -0.45, "n": 120 }]
+}
