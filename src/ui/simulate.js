@@ -74,17 +74,14 @@ export function simResult(g, st) {
 const fmt = (n) => (Math.round(n * 100) / 100).toFixed(2);
 
 /**
- * 영향 노드의 시차 문구. lag 미상 엣지가 낀 경로는 '시차 미상'.
+ * 영향 노드의 시차 문구. 시차가 모두 알려진 경로의 최소 누적 시차 기준.
  * @param {SimImpact} imp
- * @param {ScoredPath[]} paths 결과의 대표 경로 전체
  * @returns {string}
  */
-function lagText(imp, paths) {
-  const mine = paths.filter((p) => p.nodes[p.nodes.length - 1] === imp.id);
-  const p = mine.find((x) => x.lagMonths === imp.minLagMonths) ?? mine[0];
-  const known = imp.minLagMonths > 0 ? `확인된 구간 ${imp.minLagMonths}개월` : '';
-  if (!p || p.unknownLags > 0) return known ? `시차 미상 (${known})` : '시차 미상';
-  return imp.minLagMonths === 0 ? '즉시~1개월 미만' : `약 ${imp.minLagMonths}개월`;
+function lagText(imp) {
+  if (imp.minLagKnownMonths === null) return '시차 미상';
+  const base = imp.minLagKnownMonths === 0 ? '즉시~1개월 미만' : `약 ${imp.minLagKnownMonths}개월`;
+  return imp.lagUnknownPaths > 0 ? `${base} · 일부 경로 시차 미상` : base;
 }
 
 /**
@@ -132,7 +129,7 @@ export function simHtml(r, g, active = null) {
     h +=
       `<div class="it"><div class="r1"><span class="g" style="background:${col}33;color:${col}">${esc(DIR_ARROW[imp.sign] ?? '±')}</span>` +
       `<span class="nm">${nm(imp.id)}</span></div>` +
-      `<div class="meta" title="${esc(SCORE_NOTE)}">상대 점수 ${esc(fmt(Math.abs(imp.score)))} · ${esc(lagText(imp, r.paths))} · 깊이 ${imp.depth}</div></div>`;
+      `<div class="meta" title="${esc(SCORE_NOTE)}">상대 점수 ${esc(fmt(Math.abs(imp.score)))} · ${esc(lagText(imp))} · 깊이 ${imp.depth}</div></div>`;
   }
 
   if (r.paths.length) {

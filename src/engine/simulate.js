@@ -33,6 +33,8 @@ const AMBIGUOUS_RATIO = 0.1;
  * @property {number} neg
  * @property {number} amb
  * @property {number} minLag
+ * @property {number} minLagKnown   lag가 모두 알려진 경로의 최소 누적 시차(없으면 Infinity)
+ * @property {number} unkPaths     lag 미상 엣지를 포함한 기여 경로 수
  * @property {number} depth
  * @property {{conf:number, lag:number, nodes:string[], edges:EdgeData[]}[]} best  기여가 큰 경로 최대 2개
  */
@@ -111,9 +113,10 @@ export function simulate(g, startId, shockSign, opts = {}) {
    * @param {number} lag     지금까지의 누적 시차(개월)
    * @param {boolean} amb    ±가 낀 경로인가
    * @param {number} neg     음(-) 엣지 개수
+   * @param {boolean} unk    lag 미상 엣지가 낀 경로인가
    * @returns {void}
    */
-  function dfs(v, conf, lag, amb, neg) {
+  function dfs(v, conf, lag, amb, neg, unk) {
     for (const e of g.outE.get(v) ?? []) {
       if (truncated) return;
       if (!active(e)) continue;
@@ -126,6 +129,7 @@ export function simulate(g, startId, shockSign, opts = {}) {
       count++;
       const c = conf * (LEVEL_WEIGHT[e.level] ?? LEVEL_WEIGHT.D);
       const l = lag + (e.lag == null ? 0 : (LAG_MONTHS[e.lag] ?? 0));
+      const u = unk || e.lag == null;
       const a = amb || e.sign === '±';
       const n = neg + (e.sign === '-' ? 1 : 0);
       nodes.push(w);
@@ -133,13 +137,15 @@ export function simulate(g, startId, shockSign, opts = {}) {
 
       let t = acc.get(w);
       if (!t) {
-        t = { pos: 0, neg: 0, amb: 0, minLag: Infinity, depth: edges.length, best: [] };
+        t = { pos: 0, neg: 0, amb: 0, minLag: Infinity, minLagKnown: Infinity, unkPaths: 0, depth: edges.length, best: [] };
         acc.set(w, t);
       }
       if (a) t.amb += c;
       else if ((n % 2 === 0 ? 1 : -1) * shockSign > 0) t.pos += c;
       else t.neg += c;
       if (l < t.minLag) t.minLag = l;
+      if (u) t.unkPaths++;
+      else if (l < t.minLagKnown) t.minLagKnown = l;
       if (edges.length < t.depth) t.depth = edges.length;
       // 기여가 가장 큰 경로 2개 유지(복사는 후보가 될 때만)
       const cand = { conf: c, lag: l, nodes, edges };
@@ -152,14 +158,14 @@ export function simulate(g, startId, shockSign, opts = {}) {
 
       if (edges.length < maxDepth) {
         onPath.add(w);
-        dfs(w, c, l, a, n);
+        dfs(w, c, l, a, n, u);
         onPath.delete(w);
       }
       nodes.pop();
       edges.pop();
     }
   }
-  dfs(startId, 1, 0, false, 0);
+  dfs(startId, 1, 0, false, 0, false);
 
   /** @type {SimImpact[]} */
   const all = [];
@@ -169,7 +175,7 @@ export function simulate(g, startId, shockSign, opts = {}) {
     /** @type {Sign} */
     let sign = score > 0 ? '+' : '-';
     if (t.amb >= mag || mag < AMBIGUOUS_RATIO * (t.pos + t.neg)) sign = '±';
-    all.push({ id, score, sign, posMass: t.pos, negMass: t.neg, ambiguousMass: t.amb, minLagMonths: t.minLag, depth: t.depth });
+    all.push({ id, score, sign, posMass: t.pos, negMass: t.neg, ambiguousMass: t.amb, minLagMonths: t.minLag, minLagKnownMonths: Number.isFinite(t.minLagKnown) ? t.minLagKnown : null, lagUnknownPaths: t.unkPaths, depth: t.depth });
   }
   all.sort((x, y) => Math.abs(y.score) - Math.abs(x.score) || cmpStr(x.id, y.id));
   const impacts = all.slice(0, topK);

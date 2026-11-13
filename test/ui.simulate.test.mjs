@@ -215,3 +215,28 @@ test('store sim: reduce가 이전 상태를 바꾸지 않는다', () => {
   s.dispatch({ type: 'runSim' });
   assert.equal(JSON.stringify(before), snap);
 });
+
+test('simHtml 시차 문구: 전부 known / 혼합 / 전부 미상 / 즉시', () => {
+  /** @param {[string,string,string|null][]} es */
+  const mkg = (es) => createGraph(/** @type {any} */ ({
+    schemaVersion: 2,
+    meta: {},
+    nodes: ['a', 'b', 'c', 'd'].map((id) => ({ id, name: id, cat: 'Other' })),
+    edges: es.map(([src, dst, lag], i) => ({ id: `e${i}`, src, dst, sign: '+', level: 'A', status: 'open', note: '', r: null, rsrc: '', evidence: [], lag, regime: null })),
+    cors: [],
+  }));
+  /** @param {any} g @param {string} id */
+  const meta = (g, id) => {
+    const r = simulate(g, 'a', 1);
+    return simHtml({ ...r, impacts: r.impacts.filter((i) => i.id === id) }, g);
+  };
+  const known = meta(mkg([['a', 'b', 'medium']]), 'b');
+  assert.ok(known.includes('약 7개월'));
+  assert.ok(!known.includes('시차 미상'));
+  const mixed = meta(mkg([['a', 'b', 'short'], ['a', 'c', null], ['c', 'b', 'short']]), 'b');
+  assert.ok(mixed.includes('약 2개월 · 일부 경로 시차 미상'));
+  const unk = meta(mkg([['a', 'b', null]]), 'b');
+  assert.ok(unk.includes('시차 미상'));
+  assert.ok(!unk.includes('약 '));
+  assert.ok(meta(mkg([['a', 'b', 'immediate']]), 'b').includes('즉시~1개월 미만'));
+});

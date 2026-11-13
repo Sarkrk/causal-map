@@ -218,3 +218,51 @@ test('실제 graph.json: 미 10년물·원/달러 +1, 예외 없음·1초 이내
     assert.ok(r.impacts.length <= 15);
   }
 });
+
+/**
+ * lag 지정 간이 그래프.
+ * @param {string[]} ids
+ * @param {[string,string,string|null][]} es  [src,dst,lag]
+ */
+function mkLag(ids, es) {
+  return createGraph(/** @type {any} */ ({
+    schemaVersion: 2,
+    meta: {},
+    nodes: ids.map((id) => ({ id, name: id, cat: 'Other' })),
+    edges: es.map(([src, dst, lag], i) => ({ id: `e${i}`, src, dst, sign: '+', level: 'A', status: 'open', note: '', r: null, rsrc: '', evidence: [], lag, regime: null })),
+    cors: [],
+  }));
+}
+
+test('minLagKnownMonths/lagUnknownPaths: 전부 known', () => {
+  const g = mkLag(['a', 'b', 'c'], [['a', 'b', 'short'], ['b', 'c', 'medium']]);
+  const r = simulate(g, 'a', 1);
+  assert.equal(imp(r, 'c').minLagKnownMonths, 9);
+  assert.equal(imp(r, 'c').lagUnknownPaths, 0);
+  assert.equal(imp(r, 'b').minLagKnownMonths, 2);
+});
+
+test('minLagKnownMonths/lagUnknownPaths: immediate는 0(미상과 구분)', () => {
+  const g = mkLag(['a', 'b'], [['a', 'b', 'immediate']]);
+  const i = imp(simulate(g, 'a', 1), 'b');
+  assert.equal(i.minLagKnownMonths, 0);
+  assert.equal(i.lagUnknownPaths, 0);
+});
+
+test('minLagKnownMonths/lagUnknownPaths: 혼합(known 경로 + 미상 경로)', () => {
+  const g = mkLag(['a', 'b', 'c', 'd'], [['a', 'b', 'long'], ['b', 'd', 'short'], ['a', 'c', null], ['c', 'd', 'immediate']]);
+  const i = imp(simulate(g, 'a', 1), 'd');
+  assert.equal(i.minLagKnownMonths, 20);
+  assert.equal(i.lagUnknownPaths, 1);
+  assert.equal(i.minLagMonths, 0); // 하위호환: 미상=0 하한
+});
+
+test('minLagKnownMonths/lagUnknownPaths: 전부 미상', () => {
+  const g = mkLag(['a', 'b', 'c'], [['a', 'b', null], ['b', 'c', 'short']]);
+  const r = simulate(g, 'a', 1);
+  assert.equal(imp(r, 'b').minLagKnownMonths, null);
+  assert.equal(imp(r, 'b').lagUnknownPaths, 1);
+  assert.equal(imp(r, 'c').minLagKnownMonths, null);
+  assert.equal(imp(r, 'c').lagUnknownPaths, 1);
+  assert.equal(imp(r, 'b').minLagMonths, 0);
+});

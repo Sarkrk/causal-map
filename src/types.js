@@ -86,7 +86,10 @@
 
 /** @typedef {{activeRegime?:string|null, maxDepth?:number, edgeFilter?:EdgeFilter, topK?:number}} SimOptions */
 
-/** @typedef {{id:string, score:number, sign:Sign, posMass:number, negMass:number, ambiguousMass:number, minLagMonths:number, depth:number}} SimImpact */
+/**
+ * 시뮬 영향 노드. minLagMonths: 미상 lag를 0으로 가정한 하한(하위호환). minLagKnownMonths: 모든 엣지 lag가 알려진 경로 중 최소 누적 시차(없으면 null).
+ * lagUnknownPaths: lag 미상 엣지를 하나 이상 포함한 기여 경로 수.
+ * @typedef {{id:string, score:number, sign:Sign, posMass:number, negMass:number, ambiguousMass:number, minLagMonths:number, minLagKnownMonths:number|null, lagUnknownPaths:number, depth:number}} SimImpact */
 
 /** @typedef {{kind:'loop-R'|'loop-B'|'confounder'|'correlation-only', nodes:string[], edges?:string[], message:string}} SimWarning */
 
