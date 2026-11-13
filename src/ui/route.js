@@ -9,7 +9,7 @@
 /**
  * @typedef {Object} RouteParsed
  * @property {string} selected
- * @property {'map'|'in'|'out'|'cor'|'loop'|'path'} [tab]
+ * @property {'map'|'in'|'out'|'cor'|'loop'|'path'|'sim'} [tab]
  * @property {'both'|'up'|'down'} [dir]
  * @property {1|2} [hop]
  * @property {string} [pathTo]
@@ -24,7 +24,7 @@
  * @property {string|null} [pathTo]
  */
 
-const TABS = /** @type {readonly string[]} */ (['map', 'in', 'out', 'cor', 'loop', 'path']);
+const TABS = /** @type {readonly string[]} */ (['map', 'in', 'out', 'cor', 'loop', 'path', 'sim']);
 const DIRS = /** @type {readonly string[]} */ (['both', 'up', 'down']);
 
 /**

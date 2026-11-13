@@ -15,6 +15,7 @@ import {
   traceAt,
   sameTrace,
 } from './explore.js';
+import { simTabHtml, simTraceAt } from './simulate.js';
 
 /** @typedef {import('../store/store.js').AppState} AppState */
 /** @typedef {import('../store/store.js').Store} Store */
@@ -99,6 +100,7 @@ export function initPanel(o) {
       ['cor', '상관', ' ' + cr.length],
       ['loop', '루프', ' ' + loopItems(graph, st).length],
       ['path', '경로', ''],
+      ['sim', '시뮬', ''],
     ];
     const tabs = tabDefs.map(
       ([k, label, cnt]) => `<button class="${k === tab ? 'on' : ''}" data-act="tab" data-tab="${k}">${label}${cnt}</button>`,
@@ -110,6 +112,8 @@ export function initPanel(o) {
 
     if (tab === 'loop') {
       nbody.innerHTML = loopTabHtml(graph, st);
+    } else if (tab === 'sim') {
+      nbody.innerHTML = simTabHtml(graph, st);
     } else if (tab === 'path') {
       const box = nbody.querySelector('#pbox');
       if (box && box.getAttribute('data-sel') === sel) {
@@ -138,7 +142,7 @@ export function initPanel(o) {
         const id = a.getAttribute('data-id');
         if (id) store.dispatch({ type: 'select', id });
       } else if (act === 'tab') {
-        const tab = /** @type {'map'|'in'|'out'|'cor'|'loop'|'path'} */ (a.getAttribute('data-tab'));
+        const tab = /** @type {'map'|'in'|'out'|'cor'|'loop'|'path'|'sim'} */ (a.getAttribute('data-tab'));
         store.dispatch({ type: 'setTab', tab });
       } else if (act === 'hop') {
         store.dispatch({ type: 'setHop', hop: st.view.hop === 1 ? 2 : 1 });
@@ -150,6 +154,15 @@ export function initPanel(o) {
       } else if (act === 'trace') {
         // 같은 항목을 다시 누르면 강조 해제
         const tr = traceAt(graph, st, a.getAttribute('data-kind'), Number(a.getAttribute('data-idx')));
+        if (!tr) return;
+        if (sameTrace(st.view.trace, tr)) store.dispatch({ type: 'clearTrace' });
+        else store.dispatch({ type: 'setTrace', trace: tr });
+      } else if (act === 'simsign') {
+        store.dispatch({ type: 'setSim', patch: { sign: Number(a.getAttribute('data-v')) } });
+      } else if (act === 'simrun') {
+        store.dispatch({ type: 'runSim' });
+      } else if (act === 'simtrace') {
+        const tr = simTraceAt(graph, st, a.getAttribute('data-kind'), Number(a.getAttribute('data-idx')));
         if (!tr) return;
         if (sameTrace(st.view.trace, tr)) store.dispatch({ type: 'clearTrace' });
         else store.dispatch({ type: 'setTrace', trace: tr });
@@ -166,6 +179,13 @@ export function initPanel(o) {
     }
     const it = t.closest('.it');
     if (it) it.classList.toggle('x');
+  });
+
+  // 시뮬 입력(국면·깊이): 바꾸면 이전 결과는 무효가 된다
+  nb.addEventListener('change', (e) => {
+    const t = /** @type {HTMLSelectElement} */ (e.target);
+    if (t.id === 'simreg') store.dispatch({ type: 'setSim', patch: { regime: t.value === '' ? null : t.value } });
+    else if (t.id === 'simdepth') store.dispatch({ type: 'setSim', patch: { depth: Number(t.value) } });
   });
 
   // 경로 입력: 제안 목록만 갱신(입력창은 건드리지 않는다)

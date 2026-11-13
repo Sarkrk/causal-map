@@ -1,3 +1,4 @@
+// @ts-check
 // store·선택자 테스트. 실행: node --test test/store.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -32,7 +33,7 @@ test('초기값은 원본 기본값과 같다', () => {
   assert.equal(st.filters.showNR, true);
   assert.equal(st.filters.showCor, false);
   assert.deepEqual(st.prefs, { labAll: false, hideOrph: true, autoSpin: true, wobble: true });
-  assert.deepEqual(st.view, { selected: null, hop: 1, dir: 'both', tab: 'in', flatAll: false, trace: null, pathTo: null, pathRev: false, pathQuery: '', search: '' });
+  assert.deepEqual(st.view, { selected: null, hop: 1, dir: 'both', tab: 'in', flatAll: false, trace: null, pathTo: null, pathRev: false, pathQuery: '', search: '', sim: { start: null, sign: 1, regime: null, depth: 4 } });
 });
 
 test('각 action이 상태를 바꾸고 이전 객체는 그대로 둔다', () => {
@@ -109,7 +110,7 @@ test('filters·prefs·hop·dir만 저장하고 selected·tab·flatAll은 저장�
   s.dispatch({ type: 'setTab', tab: 'out' });
   const saved = JSON.parse(st.map.get('cg_view'));
   assert.deepEqual(Object.keys(saved).sort(), ['filters', 'prefs', 'view']);
-  assert.deepEqual(saved.view, { hop: 2, dir: 'down', pathTo: null, pathRev: false, pathQuery: '', search: '' });
+  assert.deepEqual(saved.view, { hop: 2, dir: 'down', pathTo: null, pathRev: false, pathQuery: '', search: '', sim: { start: null, sign: 1, regime: null, depth: 4 } });
   assert.deepEqual(saved.filters.levels, ['A', 'B', 'D']);
   assert.equal('selected' in saved.view, false);
 });

@@ -1,3 +1,4 @@
+// @ts-check
 // 주소 라우팅 테스트(parseHash·toHash·initRoute·shareLink). 실행: node --test test/route.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

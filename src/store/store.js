@@ -1,8 +1,9 @@
 // @ts-check
 // 단일 상태 저장소. dispatch마다 새 상태 객체를 만들고 이전 객체는 바꾸지 않는다.
-// filters·prefs·view.hop·dir·pathTo·pathRev·pathQuery·search를 storage(JSON)에 저장한다. selected·tab·flatAll·trace는 저장하지 않는다.
+// filters·prefs·view.hop·dir·pathTo·pathRev·pathQuery·search·sim을 storage(JSON)에 저장한다. selected·tab·flatAll·trace는 저장하지 않는다.
 // 복원 때 pathTo는 nodeIds(알려진 노드 id 목록)가 주어지고 그 안에 있을 때만 살린다.
 import { LEVELS, CATEGORY_ORDER } from './labels.js';
+import { REGIMES } from '../schema/v2.js';
 
 /**
  * @typedef {Object} Filters
@@ -14,17 +15,27 @@ import { LEVELS, CATEGORY_ORDER } from './labels.js';
  */
 
 /**
+ * 충격 시뮬레이션 입력(결과는 저장하지 않고 렌더 때 계산). start가 null이면 아직 실행 전.
+ * @typedef {Object} SimInput
+ * @property {string|null} start
+ * @property {1|-1} sign
+ * @property {string|null} regime   null=평시 가정, 아니면 REGIMES 중 하나
+ * @property {number} depth         2~6
+ */
+
+/**
  * @typedef {Object} View
  * @property {string|null} selected
  * @property {1|2} hop
  * @property {'both'|'up'|'down'} dir
- * @property {'map'|'in'|'out'|'cor'|'loop'|'path'} tab
+ * @property {'map'|'in'|'out'|'cor'|'loop'|'path'|'sim'} tab
  * @property {boolean} flatAll
  * @property {Trace|null} trace    루프·경로 탭에서 고른 한 개(캔버스·관계도 강조용)
  * @property {string|null} pathTo   경로 탭의 도착 노드 id
  * @property {boolean} pathRev      경로 방향 반전(true면 도착→선택 노드). 선택·도착 쌍이 바뀌면 false로 돌아간다
  * @property {string} pathQuery     경로 탭 도착 노드 검색어(탭을 오가도 유지)
  * @property {string} search        상단 검색창 검색어
+ * @property {SimInput} sim         충격 시뮬레이션 입력
  */
 
 /**
@@ -58,7 +69,7 @@ import { LEVELS, CATEGORY_ORDER } from './labels.js';
  *   | {type:'toggle', key:'showNR'|'showCor'|'labAll'|'hideOrph'|'autoSpin'|'wobble'}
  *   | {type:'setHop', hop:1|2}
  *   | {type:'setDir', dir:'both'|'up'|'down'}
- *   | {type:'setTab', tab:'map'|'in'|'out'|'cor'|'loop'|'path'}
+ *   | {type:'setTab', tab:'map'|'in'|'out'|'cor'|'loop'|'path'|'sim'}
  *   | {type:'toggleFlatAll'}
  *   | {type:'setTrace', trace:Trace}
  *   | {type:'clearTrace'}
@@ -66,6 +77,8 @@ import { LEVELS, CATEGORY_ORDER } from './labels.js';
    | {type:'togglePathRev'}
    | {type:'setPathQuery', value:string}
    | {type:'setSearch', value:string}
+   | {type:'setSim', patch:{sign?:number, regime?:string|null, depth?:number}}
+   | {type:'runSim'}
  *   | {type:'restoreView', selected:string|null, tab?:string, dir?:string, hop?:number, pathTo?:string|null}} Action
  */
 
@@ -80,7 +93,11 @@ import { LEVELS, CATEGORY_ORDER } from './labels.js';
  */
 
 const DIRS = ['both', 'up', 'down'];
-const TABS = ['map', 'in', 'out', 'cor', 'loop', 'path'];
+const TABS = ['map', 'in', 'out', 'cor', 'loop', 'path', 'sim'];
+export const SIM_DEPTH_MIN = 2;
+export const SIM_DEPTH_MAX = 6;
+/** @type {SimInput} */
+const SIM_DEFAULT = { start: null, sign: 1, regime: null, depth: 4 };
 const FILTER_KEYS = ['showNR', 'showCor'];
 const PREF_KEYS = ['labAll', 'hideOrph', 'autoSpin', 'wobble'];
 
@@ -92,7 +109,7 @@ const PREF_KEYS = ['labAll', 'hideOrph', 'autoSpin', 'wobble'];
 export function initialState(categories) {
   return {
     filters: { levels: LEVELS.slice(), cats: categories.slice(), thr: 0, showNR: true, showCor: false },
-    view: { selected: null, hop: 1, dir: 'both', tab: 'in', flatAll: false, trace: null, pathTo: null, pathRev: false, pathQuery: '', search: '' },
+    view: { selected: null, hop: 1, dir: 'both', tab: 'in', flatAll: false, trace: null, pathTo: null, pathRev: false, pathQuery: '', search: '', sim: SIM_DEFAULT },
     prefs: { labAll: false, hideOrph: true, autoSpin: true, wobble: true },
   };
 }
@@ -172,6 +189,18 @@ function reduce(s, a) {
       return typeof a.value === 'string' ? { ...s, view: { ...s.view, pathQuery: a.value } } : s;
     case 'setSearch':
       return typeof a.value === 'string' ? { ...s, view: { ...s.view, search: a.value } } : s;
+    case 'setSim': {
+      // 입력을 바꾸면 이전 결과는 무효(start=null). 다시 '실행'을 눌러야 계산된다.
+      const p = a.patch ?? {};
+      const cur = s.view.sim;
+      const sign = p.sign === 1 || p.sign === -1 ? p.sign : cur.sign;
+      const regime = p.regime === null ? null : typeof p.regime === 'string' && REGIMES.includes(p.regime) ? p.regime : cur.regime;
+      const depth =
+        typeof p.depth === 'number' && Number.isInteger(p.depth) && p.depth >= SIM_DEPTH_MIN && p.depth <= SIM_DEPTH_MAX ? p.depth : cur.depth;
+      return { ...s, view: { ...s.view, sim: { start: null, sign, regime, depth }, trace: null } };
+    }
+    case 'runSim':
+      return s.view.selected ? { ...s, view: { ...s.view, sim: { ...s.view.sim, start: s.view.selected }, trace: null } } : s;
     case 'restoreView': {
       // 주소(#...)·뒤로 가기 복원용. 값 검증은 여기서, 노드 존재 확인은 호출자가 한다.
       const v = s.view;
@@ -246,6 +275,14 @@ function restore(initial, key, storage, nodeIds) {
       : initial.filters.cats;
   const thr = typeof f.thr === 'number' && f.thr >= 0 && f.thr <= 1 ? f.thr : initial.filters.thr;
   const pathTo = typeof v.pathTo === 'string' && nodeIds?.has(v.pathTo) ? v.pathTo : null;
+  const sv = obj(v.sim);
+  /** @type {SimInput} */
+  const sim = {
+    start: typeof sv.start === 'string' && nodeIds?.has(sv.start) ? sv.start : null,
+    sign: sv.sign === -1 ? -1 : 1,
+    regime: typeof sv.regime === 'string' && REGIMES.includes(sv.regime) ? sv.regime : null,
+    depth: Number.isInteger(sv.depth) && sv.depth >= SIM_DEPTH_MIN && sv.depth <= SIM_DEPTH_MAX ? sv.depth : SIM_DEFAULT.depth,
+  };
   return {
     filters: {
       levels,
@@ -268,6 +305,7 @@ function restore(initial, key, storage, nodeIds) {
       pathRev: pathTo !== null && v.pathRev === true,
       pathQuery: typeof v.pathQuery === 'string' ? v.pathQuery.slice(0, 200) : initial.view.pathQuery,
       search: typeof v.search === 'string' ? v.search.slice(0, 200) : initial.view.search,
+      sim,
     },
   };
 }
@@ -291,6 +329,7 @@ function save(key, storage, s) {
           pathRev: s.view.pathRev,
           pathQuery: s.view.pathQuery,
           search: s.view.search,
+          sim: s.view.sim,
         },
       }),
     );
@@ -324,7 +363,8 @@ export function createStore(initial, { persistKey = 'cg_view', storage = default
         state.view.pathTo !== prev.view.pathTo ||
         state.view.pathRev !== prev.view.pathRev ||
         state.view.pathQuery !== prev.view.pathQuery ||
-        state.view.search !== prev.view.search
+        state.view.search !== prev.view.search ||
+        state.view.sim !== prev.view.sim
       ) {
         save(persistKey, storage, state);
       }
