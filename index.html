@@ -56,12 +56,15 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 .lg{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--mu)}
 .lg span{display:flex;align-items:center;gap:5px}
 .sw{display:inline-block;width:22px;height:0;border-top:2px solid}
+#nsh{position:relative}#nt{padding-right:64px}#nshare{position:absolute;right:16px;top:8px;padding:5px 11px;font-size:12px}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 70px);transform:translateX(-50%);background:#f2f2f2;color:#1e1e1e;padding:8px 14px;border-radius:16px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+#toast.on{opacity:1}
 </style></head><body>
 <canvas id="cv"></canvas>
 <div id="top"><div id="sw"><input id="q" type="search" placeholder="노드 검색" autocomplete="off"><div id="sug"></div></div><button class="fab" id="fb" aria-label="필터">☰</button></div>
 <div id="zoombox"><button class="fab" id="zi">+</button><button class="fab" id="zo">−</button><button class="fab" id="zf" title="전체 보기">⤢</button></div>
 <div id="stat"></div>
-<div class="sheet" id="ns"><div class="hd" id="nsh"><i></i><h2 id="nt"></h2><div class="sub" id="nsub"></div></div><div class="bd" id="nb"></div></div>
+<div class="sheet" id="ns"><div class="hd" id="nsh"><i></i><h2 id="nt"></h2><div class="sub" id="nsub"></div><button class="chip" id="nshare" type="button">링크</button></div><div class="bd" id="nb"></div></div>
 <div class="sheet" id="fs"><div class="hd" id="fsh"><i></i><h2>보기 설정</h2></div><div class="bd" id="fbd">
  <div class="sec">데이터</div><div id="dver" class="sub" style="line-height:1.6"></div>
  <div class="row" style="margin-top:8px"><button class="chip" id="dupd">⟳ 최신 데이터 받기</button></div><div id="dmsg" class="sub" style="margin-top:6px"></div>
@@ -73,6 +76,7 @@ input[type=range]{width:100%;accent-color:var(--acc)}
  <div class="sec">표시</div><div class="row"><button class="chip" id="tcor">상관선(점선)</button><button class="chip" id="tlab">라벨 항상</button><button class="chip on" id="torp">고립 노드 숨김</button><button class="chip on" id="tspin">자동 회전</button><button class="chip on" id="twob">흔들림</button><button class="chip" id="trel">다시 배치</button></div>
  <p class="sub" style="margin-top:16px;line-height:1.5">배경 스와이프: 3D 회전(튕기면 관성) · 두 손가락: 확대·이동 · 점 탭: 관련 노드만 강조 + 상세 · 점 끌기: 위치 이동 · 빈 곳 탭: 해제 · 가만히 두면 천천히 회전</p>
 </div></div>
+<div id="toast" role="status" aria-live="polite"></div>
 <script type="module" src="src/main.js"></script>
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});</script>
 </body></html>

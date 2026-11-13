@@ -111,3 +111,20 @@ export function highlight(g, sel, hop, dir, filters, vis) {
   }
   return neighborhood(g, sel, hop, dir, (e) => causalVisible(g, e, filters));
 }
+
+/**
+ * 캔버스 강조 집합. 루프·경로 탭에서 고른 trace가 있으면 그것만 강조하고(edgeIds = trace.edges),
+ * 없으면 선택 노드의 highlight 결과를 쓴다(edgeIds = null: 캔버스는 기존 규칙으로 선을 고른다).
+ * 강조할 것이 없으면(선택·trace 모두 없음) null.
+ * @param {Graph} g
+ * @param {AppState} state
+ * @param {{causal: EdgeData[], cors: CorData[]}} vis  visible() 결과
+ * @returns {{nodes: Set<string>, edgeIds: Set<string>|null}|null}
+ */
+export function emphasis(g, state, vis) {
+  const tr = state.view.trace;
+  if (tr) return { nodes: new Set(tr.nodes), edgeIds: new Set(tr.edges) };
+  const sel = state.view.selected;
+  if (!sel) return null;
+  return { nodes: highlight(g, sel, state.view.hop, state.view.dir, state.filters, vis), edgeIds: null };
+}

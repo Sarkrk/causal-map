@@ -11,6 +11,7 @@ import { initFilters } from './ui/filters.js';
 import { initSearch } from './ui/search.js';
 import { initUpdate } from './ui/update.js';
 import { initPanel } from './ui/panel.js';
+import { initRoute, shareLink } from './ui/route.js';
 
 /** @param {string} id */
 function byId(id) {
@@ -108,6 +109,36 @@ async function boot() {
     nsub: byId('nsub'),
     nb: byId('nb'),
   });
+
+  // 주소(#n=…) 열기·뒤로 가기. 노드 열기는 점 탭과 같은 select 흐름(카메라 이동·시트 열기)을 쓴다.
+  initRoute({
+    graph,
+    store,
+    onOpenNode: (id) => {
+      const node = graph.byId.get(id);
+      if (node && !store.get().filters.cats.includes(node.cat)) store.dispatch({ type: 'toggleCat', cat: node.cat });
+      store.dispatch({ type: 'select', id });
+    },
+  });
+
+  // 노드 시트의 '링크' 버튼. 시트 드래그(pointerdown·capture)와 겹치지 않게 pointerdown을 막는다.
+  const shareBtn = byId('nshare');
+  shareBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+  shareBtn.addEventListener('click', () => {
+    const v = store.get().view;
+    const node = v.selected ? graph.byId.get(v.selected) : undefined;
+    if (node) shareLink(v, node.name, { notify: toast }).catch(() => {});
+  });
+}
+
+let toastTimer = 0;
+/** @param {string} msg */
+function toast(msg) {
+  const el = byId('toast');
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => el.classList.remove('on'), 1600);
 }
 
 boot();

@@ -2,7 +2,7 @@
 // 3D 힘그래프 렌더러. 원본 app.js의 물리·투영·안개·라벨·화살표·포인터 제스처를 옮긴 것.
 // 물리 필드는 데이터 객체가 아니라 이 파일의 Body(Map<id, Body>)에 둔다.
 import { CC, GC, categoriesPresent } from '../store/labels.js';
-import { visible, highlight } from '../store/select.js';
+import { visible, emphasis } from '../store/select.js';
 
 /** @typedef {import('../types.js').Graph} Graph */
 /** @typedef {import('../types.js').NodeData} NodeData */
@@ -35,6 +35,7 @@ import { visible, highlight } from '../store/select.js';
 /**
  * @typedef {Object} Link
  * @property {'c'|'r'} k
+ * @property {string} id     인과: 엣지 id, 상관: ''
  * @property {Body} a
  * @property {Body} b
  * @property {string} level  인과: 'A'..'D', 상관: ''
@@ -151,8 +152,8 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     VB = bodies.filter((b) => vis.nodes.has(b.d.id));
     VS = new Set(VB);
     VL = vis.causal
-      .map((e) => /** @type {Link} */ ({ k: 'c', a: bod(e.src), b: bod(e.dst), level: e.level, r: e.r }))
-      .concat(vis.cors.map((c) => /** @type {Link} */ ({ k: 'r', a: bod(c.src), b: bod(c.dst), level: '', r: c.r })));
+      .map((e) => /** @type {Link} */ ({ k: 'c', id: e.id, a: bod(e.src), b: bod(e.dst), level: e.level, r: e.r }))
+      .concat(vis.cors.map((c) => /** @type {Link} */ ({ k: 'r', id: '', a: bod(c.src), b: bod(c.dst), level: '', r: c.r })));
     alpha = Math.max(alpha, 0.5);
   }
 
@@ -307,11 +308,18 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     const sel = st.view.selected;
     const hop = st.view.hop;
     const labAll = st.prefs.labAll;
-    const hs = sel ? highlight(graph, sel, hop, st.view.dir, st.filters, vis) : null;
+    // trace(루프·경로 탭에서 고른 것)가 있으면 그 노드·엣지만 강조. 없으면 기존 선택 강조와 같다.
+    const em = emphasis(graph, st, vis);
+    const hs = em ? em.nodes : null;
+    const eIds = em ? em.edgeIds : null;
     const k = cam.k;
     const zk = Math.max(0.7, Math.min(k, 2.2));
     /** @param {Link} l */
-    const isOn = (l) => !!hs && hs.has(l.a.d.id) && hs.has(l.b.d.id) && (hop > 1 || l.a.d.id === sel || l.b.d.id === sel);
+    const isOn = (l) =>
+      !!hs &&
+      hs.has(l.a.d.id) &&
+      hs.has(l.b.d.id) &&
+      (eIds ? l.k === 'c' && eIds.has(l.id) : hop > 1 || l.a.d.id === sel || l.b.d.id === sel);
     VL.filter((l) => VS.has(l.a) && VS.has(l.b))
       .sort((u, v) => (Number(isOn(u)) - Number(isOn(v))) || (v.a.sz + v.b.sz - (u.a.sz + u.b.sz)))
       .forEach((l) => {
@@ -414,6 +422,31 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     const t = { cx: c[0], cy: c[1], cz: c[2], px: 0, py: 0, k: Math.min(W, H - 150) / (2 * R * 1.3 + 40) };
     if (anim) flyTo(t);
     else Object.assign(cam, t);
+  }
+
+  /**
+   * 주어진 노드 id들(화면에 보이는 것만)이 모두 들어오도록 카메라를 맞춘다. 선택 노드 이동과 같은 식으로 살짝 위로 올린다.
+   * @param {string[]} ids
+   */
+  function fitIds(ids) {
+    /** @type {Body[]} */
+    const A = [];
+    for (const id of ids) {
+      const b = B.get(id);
+      if (b && VS.has(b)) A.push(b);
+    }
+    if (!A.length) return;
+    const c = [0, 0, 0];
+    A.forEach((n) => {
+      c[0] += n.x;
+      c[1] += n.y;
+      c[2] += n.z;
+    });
+    c.forEach((v, i) => (c[i] = v / A.length));
+    let R = 0;
+    A.forEach((n) => (R = Math.max(R, Math.hypot(n.x - c[0], n.y - c[1], n.z - c[2]))));
+    const k = Math.min(W, H - 150) / (2 * R * 1.3 + 40);
+    flyTo({ cx: c[0], cy: c[1], cz: c[2], px: 0, py: -H * 0.24, k: Math.max(0.15, Math.min(3, k)) });
   }
 
   /** @param {number} f @param {number} sx @param {number} sy */
@@ -560,6 +593,9 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
       flyTo({ cx: n.x, cy: n.y, cz: n.z, px: 0, py: -H * 0.24, k: Math.max(cam.k, 1.6) });
     } else if (action.type === 'deselect') {
       if (st.prefs.hideOrph) recompute();
+    } else if (action.type === 'setTrace' && st.view.trace) {
+      lastAct = performance.now();
+      fitIds(st.view.trace.nodes);
     }
   });
 
