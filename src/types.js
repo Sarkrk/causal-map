@@ -15,6 +15,9 @@
  * @property {Category} cat
  * @property {number|null} [layer]
  * @property {string|null} [series]
+ * @property {string|null} [desc]     짧은 설명(1~240자)
+ * @property {string|null} [descSrc]  설명 출처 표기(1~120자)
+ * @property {string[]|null} [aka]    동의어·표제어(0~12개, 각 1~40자, 중복 금지)
  */
 
 /**

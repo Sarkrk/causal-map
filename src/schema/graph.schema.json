@@ -29,7 +29,15 @@
           "name": { "type": "string", "minLength": 1 },
           "cat": { "enum": ["Real_Economy", "Inflation_Labor", "Policy", "Financial_Market", "External_Sector", "Industry_AI", "Other"] },
           "layer": { "type": ["integer", "null"] },
-          "series": { "type": ["string", "null"] }
+          "series": { "type": ["string", "null"] },
+          "desc": { "type": ["string", "null"], "minLength": 1, "maxLength": 240 },
+          "descSrc": { "type": ["string", "null"], "minLength": 1, "maxLength": 120 },
+          "aka": {
+            "type": ["array", "null"],
+            "maxItems": 12,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "maxLength": 40 }
+          }
         }
       }
     },

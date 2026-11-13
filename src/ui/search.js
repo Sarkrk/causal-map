@@ -2,6 +2,7 @@
 // 검색창과 제안 목록. 원본 q.oninput·sug.onclick과 같은 동작(상위 8개, 범주가 꺼져 있으면 켜고 선택).
 import { CC, CN } from '../store/labels.js';
 import { esc } from '../render/flatmap.js';
+import { searchNodes } from '../engine/graph.js';
 
 /** @typedef {import('../store/store.js').Store} Store */
 /** @typedef {import('../types.js').Graph} Graph */
@@ -23,7 +24,7 @@ export function initSearch(o) {
       closeSug();
       return;
     }
-    const m = graph.nodes.filter((n) => n.name.toLowerCase().includes(v)).slice(0, 8);
+    const m = searchNodes(graph.nodes, v).slice(0, 8);
     sug.innerHTML =
       m
         .map(

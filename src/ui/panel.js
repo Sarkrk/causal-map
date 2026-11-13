@@ -25,6 +25,21 @@ import { simTabHtml, simTraceAt } from './simulate.js';
 /** @typedef {import('../types.js').NodeData} NodeData */
 
 /**
+ * 노드 설명 블록 HTML(desc·출처·다른 이름). 모두 이스케이프. 해당 필드가 없으면 ''.
+ * @param {NodeData} n
+ * @returns {string}
+ */
+export function nodeDescHtml(n) {
+  let h = '';
+  if (n.desc) h += `<div class="ndesc-t">${esc(n.desc)}</div>`;
+  if (n.desc && n.descSrc) h += `<div class="sub ndesc-s" style="color:#888;font-size:11px">출처: ${esc(n.descSrc)}</div>`;
+  if (Array.isArray(n.aka) && n.aka.length) {
+    h += `<div class="sub ndesc-a">다른 이름: ${n.aka.map((a) => esc(a)).join(' · ')}</div>`;
+  }
+  return h;
+}
+
+/**
  * @param {{graph: Graph, store: Store, nt: HTMLElement, nsub: HTMLElement, nb: HTMLElement}} o
  * @returns {void}
  */
@@ -32,6 +47,10 @@ export function initPanel(o) {
   const { graph, store, nt, nsub, nb } = o;
 
   // 탭 줄(#nhead)과 본문(#nbody)을 따로 갈아 끼워서, 경로 입력창이 있는 본문은 탭을 바꿔도 같은 DOM을 유지한다.
+  const ndesc = document.createElement('div');
+  ndesc.id = 'ndesc';
+  nsub.insertAdjacentElement('afterend', ndesc);
+
   nb.innerHTML = '<div id="nhead"></div><div id="nbody"></div>';
   const nhead = /** @type {HTMLElement} */ (nb.querySelector('#nhead'));
   const nbody = /** @type {HTMLElement} */ (nb.querySelector('#nbody'));
@@ -85,6 +104,8 @@ export function initPanel(o) {
 
     nt.innerHTML = `<span class="dot" style="background:${CC[n.cat]}"></span>${esc(n.name)}`;
     nsub.textContent = `${CN[n.cat]} · 원인 ${inn.length} · 결과 ${out.length} · 상관 ${cr.length} · 강조 ${hop}단계 · ${DIR_TEXT[dir]}`;
+
+    ndesc.innerHTML = nodeDescHtml(n);
 
     /** @type {Record<'map'|'in'|'out'|'cor', string>} */
     const B = {
