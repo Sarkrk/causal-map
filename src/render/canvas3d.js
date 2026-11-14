@@ -115,7 +115,7 @@ function gesture(o) {
  * @param {Store} store
  * @param {{onPointerDown?: () => void, storage?: LayoutStorage|null, version?: string}} [opts]
  *   storage: 배치 저장소(기본 localStorage, 테스트는 가짜 주입). version: meta.version(다르면 저장 배치 무시).
- * @returns {{zoomBy: (f: number) => void, fit: (anim: boolean) => void, reseed: () => void, isRunning: () => boolean}}
+ * @returns {{zoomBy: (f: number) => void, fit: (anim: boolean) => void, recenter: () => void, reseed: () => void, isRunning: () => boolean}}
  */
 export function createCanvas3D(cv, graph, store, opts = {}) {
   const ctx0 = cv.getContext('2d');
@@ -365,7 +365,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
       .sort((u, v) => (Number(isOn(u)) - Number(isOn(v))) || (v.a.sz + v.b.sz - (u.a.sz + u.b.sz)))
       .forEach((l) => {
         const on = isOn(l);
-        const col = l.k === 'r' ? '#3fb6c9' : GC[/** @type {'A'} */ (l.level)];
+        const col = l.k === 'r' ? '#7d8da0' : GC[/** @type {'A'} */ (l.level)];
         const fog = Math.min(l.a.fog, l.b.fog);
         // B-는 같은 B색에서 알파만 낮춰 흐리게(B+와 구분). 등급 가중치·굵기는 그대로.
         const dimB = l.level === 'B' && l.sub === '-' ? 0.72 : 1;
@@ -387,7 +387,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
         if (l.k === 'c' && on) {
           const u = (performance.now() / 1100 + l.a.ph) % 1;
           ctx.globalAlpha = 0.95;
-          ctx.fillStyle = '#e8ffff';
+          ctx.fillStyle = '#ffffff';
           ctx.beginPath();
           ctx.arc(l.a.sx + (l.b.sx - l.a.sx) * u, l.a.sy + (l.b.sy - l.a.sy) * u, 1.8 * Math.min(1.5, Math.max(0.8, k)), 0, 6.283);
           ctx.fill();
@@ -431,12 +431,12 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
         }
         if (n.d.id === sel) {
           ctx.globalAlpha = 1;
-          ctx.strokeStyle = '#e8ffff';
+          ctx.strokeStyle = '#ffffff';
           ctx.lineWidth = 1.6;
           ctx.beginPath();
           ctx.arc(n.sx, n.sy, r + 4, 0, 6.283);
           ctx.stroke();
-          ctx.strokeStyle = '#5cf0ff';
+          ctx.strokeStyle = '#e6e8ec';
           ctx.lineWidth = 1.2;
           ctx.setLineDash([6, 5]);
           ctx.lineDashOffset = -performance.now() / 55;
@@ -462,17 +462,17 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
       box.push(bb);
       ctx.globalAlpha = a;
       ctx.lineWidth = 2.5;
-      ctx.strokeStyle = 'rgba(4,7,13,.92)';
+      ctx.strokeStyle = 'rgba(10,11,13,.92)';
       ctx.lineJoin = 'round';
       ctx.strokeText(n.d.name, x, y);
-      ctx.fillStyle = n.d.id === sel ? '#e8ffff' : '#b4cce0';
+      ctx.fillStyle = n.d.id === sel ? '#ffffff' : '#cfd2d6';
       ctx.fillText(n.d.name, x, y);
     });
     ctx.globalAlpha = 1;
     {
       const cx = W / 2 + cam.px;
       const cy = H / 2 + cam.py;
-      ctx.strokeStyle = 'rgba(92,240,255,.55)';
+      ctx.strokeStyle = 'rgba(255,255,255,.4)';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(cx, cy, 9, 0, 6.283);
@@ -798,6 +798,10 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     /** @param {boolean} anim */
     fit(anim) {
       fit(anim);
+    },
+    /** 줌은 그대로 두고 화면 이동(px·py)만 0으로: 전체 구조의 중심(과녁)이 화면 가운데로 온다. */
+    recenter() {
+      flyTo({ px: 0, py: 0 });
     },
     reseed() {
       layout.reseed(layout.nextSeed());

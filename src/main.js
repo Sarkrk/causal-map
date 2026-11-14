@@ -85,6 +85,7 @@ async function boot() {
   byId('zi').addEventListener('click', () => canvas.zoomBy(1.35));
   byId('zo').addEventListener('click', () => canvas.zoomBy(1 / 1.35));
   byId('zf').addEventListener('click', () => canvas.fit(true));
+  byId('zc').addEventListener('click', () => canvas.recenter());
 
   stat.textContent = '';
 
