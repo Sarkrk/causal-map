@@ -59,6 +59,7 @@
           "lag": { "enum": ["immediate", "short", "medium", "long", null] },
           "regime": { "type": ["string", "null"] },
           "strength": { "type": ["string", "null"] },
+          "sub": { "enum": ["+", "-"] },
           "r": { "type": ["number", "null"] },
           "rsrc": { "type": "string" },
           "evidence": {

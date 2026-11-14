@@ -27,6 +27,7 @@ export function initFilters(o) {
    * @param {string|undefined} col
    * @param {(st: AppState) => boolean} isOn
    * @param {() => void} act
+   * @returns {HTMLButtonElement}
    */
   function chip(par, txt, col, isOn, act) {
     const b = document.createElement('button');
@@ -36,20 +37,29 @@ export function initFilters(o) {
     b.addEventListener('click', act);
     par.appendChild(b);
     chips.set(b, isOn);
+    return b;
   }
 
   /** @type {Record<string, number>} */
   const cnt = {};
-  graph.edges.forEach((e) => (cnt[e.level] = (cnt[e.level] || 0) + 1));
+  /** @type {Record<string, number>} */
+  const cntSub = {};
+  graph.edges.forEach((e) => {
+    cnt[e.level] = (cnt[e.level] || 0) + 1;
+    if (e.level === 'B' && e.sub) cntSub[e.sub] = (cntSub[e.sub] || 0) + 1;
+  });
 
   for (const v of LEVELS) {
-    chip(
+    // B 칩은 B+·B-를 모두 포함한다(필터는 A~D 4개 유지). 칩에는 합계만, 세분은 툴팁에.
+    const sub = v === 'B' && cntSub['+'] + cntSub['-'] > 0 ? ` (B+ ${cntSub['+'] || 0} · B- ${cntSub['-'] || 0})` : '';
+    const b = chip(
       flv,
       `${v} ${cnt[v] || 0}`,
       GC[/** @type {'A'} */ (v)],
       (st) => st.filters.levels.includes(v),
       () => store.dispatch({ type: 'toggleLevel', level: v }),
     );
+    if (sub) b.title = `B${sub}`;
   }
   for (const k of categories) {
     chip(

@@ -18,7 +18,7 @@ const DESC_SRC_MAX = 120;
 const AKA_MAX_N = 12;
 const AKA_MAX_LEN = 40;
 const EDGE_REQUIRED = ['id', 'src', 'dst', 'sign', 'level', 'status', 'note', 'r', 'rsrc', 'evidence'];
-const EDGE_KEYS = [...EDGE_REQUIRED, 'cond', 'lag', 'regime', 'strength'];
+const EDGE_KEYS = [...EDGE_REQUIRED, 'cond', 'lag', 'regime', 'strength', 'sub'];
 const EVIDENCE_KEYS = ['kind', 'stance'];
 const COR_REQUIRED = ['src', 'dst', 'r'];
 
@@ -250,6 +250,11 @@ function checkEdges(edges, nodeIds, errors, warnings) {
     if ('regime' in e && e.regime !== null && e.regime !== undefined) {
       if (typeof e.regime !== 'string') errors.push(`${label}: regime must be a string or null`);
       else if (!REGIMES.includes(e.regime)) warnings.push(`${label}: regime "${e.regime}" not in vocabulary (${REGIMES.join('|')})`);
+    }
+    // sub: B 등급 세분(선택). 화면 표시 전용 — level enum은 A~D 그대로 둔다.
+    if ('sub' in e && e.sub !== null && e.sub !== undefined) {
+      if (e.sub !== '+' && e.sub !== '-') errors.push(`${label}: sub "${String(e.sub)}" invalid (use "+" or "-")`);
+      else if (e.level !== 'B') warnings.push(`${label}: sub "${e.sub}" ignored (level ${String(e.level)} is not B)`);
     }
     if ('evidence' in e) checkEvidence(e.evidence, label, errors);
 

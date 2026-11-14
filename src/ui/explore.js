@@ -6,6 +6,7 @@ import { findLoops as engineFindLoops } from '../engine/cycles.js';
 import { findPaths as engineFindPaths } from '../engine/paths.js';
 import { SIGN_LABEL, searchNodes } from '../engine/graph.js';
 import { causalVisible } from '../store/select.js';
+import { levelText } from '../store/labels.js';
 import { esc } from '../render/flatmap.js';
 
 /** @typedef {import('../types.js').Graph} Graph */
@@ -198,7 +199,7 @@ function chainHtml(g, edges) {
  * @param {EdgeData[]} edges
  * @returns {string}
  */
-const gradeText = (edges) => edges.map((e) => esc(e.level)).join('·');
+const gradeText = (edges) => edges.map((e) => esc(levelText(e.level, e.sub))).join('·');
 
 /**
  * 항목 한 줄 공통 래퍼. 선택된 항목은 .on + 배경.

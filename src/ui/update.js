@@ -39,9 +39,11 @@ export function initUpdate(o) {
   });
 
   const lv = m.levels || {};
+  // B는 DB에서 B+/B-로 나눠 셈한 값이 함께 온다(옛 데이터에는 없으므로 없으면 표시하지 않는다).
+  const bsub = lv['B+'] != null || lv['B-'] != null ? ` (B+ ${esc(lv['B+'] ?? 0)} · B- ${esc(lv['B-'] ?? 0)})` : '';
   dver.innerHTML =
     `기준 <b>${esc(m.generated || '?')}</b> · 버전 ${esc(m.version || '?')}<br>` +
-    `노드 ${esc(m.nodes || nodeCount)} · 인과 ${esc(m.edges || edgeCount)} (A ${esc(lv.A || 0)} / B ${esc(lv.B || 0)} / C ${esc(lv.C || 0)} / D ${esc(lv.D || 0)})`;
+    `노드 ${esc(m.nodes || nodeCount)} · 인과 ${esc(m.edges || edgeCount)} (A ${esc(lv.A || 0)} / B ${esc(lv.B || 0)}${bsub} / C ${esc(lv.C || 0)} / D ${esc(lv.D || 0)})`;
 
   dupd.addEventListener('click', async () => {
     dupd.disabled = true;

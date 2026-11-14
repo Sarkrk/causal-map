@@ -148,7 +148,9 @@ export function flatHtml(graph, state, nid) {
       const col = GC[/** @type {'A'} */ (l.level)];
       const on = i === mid - 1 || i === mid;
       const ecls = trCls(trPairs.has(l.src + '\u0001' + l.dst));
-      sv += `<path${ecls ? ` class="${ecls}"` : ''} d="M${x1},${y1} C${cx},${y1} ${cx},${y2} ${x2 - 4},${y2}" fill="none" stroke="${col}" stroke-opacity="${on ? 0.85 : 0.45}" stroke-width="${l.level === 'A' ? 2.2 : l.level === 'B' ? 1.6 : 1.1}" ${l.level === 'D' ? 'stroke-dasharray="4 3"' : ''} marker-end="url(#ar${l.level})"/>`;
+      // B-는 같은 B색에서 투명도만 낮춰 흐리게(B+와 구분). 굵기·색·정렬은 그대로.
+      const op = l.level === 'B' && l.sub === '-' ? (on ? 0.68 : 0.3) : on ? 0.85 : 0.45;
+      sv += `<path${ecls ? ` class="${ecls}"` : ''} d="M${x1},${y1} C${cx},${y1} ${cx},${y2} ${x2 - 4},${y2}" fill="none" stroke="${col}" stroke-opacity="${op}" stroke-width="${l.level === 'A' ? 2.2 : l.level === 'B' ? 1.6 : 1.1}" ${l.level === 'D' ? 'stroke-dasharray="4 3"' : ''} marker-end="url(#ar${l.level})"/>`;
       if (on) badge.push([i === mid - 1 ? x1 : x2, i === mid - 1 ? y1 : y2, col, SIGN_LABEL[l.sign], ecls]);
     }
   }

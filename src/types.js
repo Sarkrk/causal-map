@@ -39,6 +39,7 @@
  * @property {Lag|null} [lag]          null/생략=미상
  * @property {Regime|null} [regime]   이 엣지가 활성인 국면. null/생략=상시
  * @property {string|null} [strength]
+ * @property {'+'|'-'|null} [sub]     B 등급 세분(optional). level==='B'일 때만 채운다. B+=데이터 부분 이상 받침, B-=구조 근거만
  * @property {number|null} r
  * @property {string} rsrc
  * @property {Evidence[]} evidence

@@ -44,6 +44,30 @@ export const CATEGORY_ORDER = Object.keys(CN);
 /** @type {string[]} 등급 전체 */
 export const LEVELS = ['A', 'B', 'C', 'D'];
 
+/**
+ * 엣지 표시 등급. DB level은 A~D 그대로 두고, B만 sub('+'|'-')로 B+/B-로 나눠 쓴다.
+ * sub가 없거나 B가 아니면 level을 그대로 돌려준다.
+ * @param {string} level
+ * @param {string|null|undefined} [sub]
+ * @returns {string}
+ */
+export function levelText(level, sub) {
+  return level === 'B' && (sub === '+' || sub === '-') ? 'B' + sub : level;
+}
+
+/**
+ * 등급 배지 색. B-는 같은 B색을 조금 흐리게 쓴다(색상은 그대로, 알파만 낮춤).
+ * @param {string} level
+ * @param {string|null|undefined} [sub]
+ * @param {number} [alpha] 알파(0~255, 기본 255)
+ * @returns {string}
+ */
+export function levelColor(level, sub, alpha = 0xff) {
+  const c = GC[/** @type {'A'} */ (level)] || GC.C;
+  const a = level === 'B' && sub === '-' ? Math.round(alpha * 0.72) : alpha;
+  return a === 0xff ? c : c + a.toString(16).padStart(2, '0');
+}
+
 /** 방향 토글 버튼 라벨 (순환 순서: both → up → down). */
 export const DIR_BTN = { both: '양쪽 ⇄', up: '원인만 ←', down: '결과만 →' };
 

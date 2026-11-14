@@ -52,6 +52,7 @@ import {
  * @property {Body} a
  * @property {Body} b
  * @property {string} level  인과: 'A'..'D', 상관: ''
+ * @property {'+'|'-'|null} [sub]  인과: B 등급 세분(B+/B-), 그 밖은 없음
  * @property {number|null} r
  */
 
@@ -193,7 +194,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     VB = bodies.filter((b) => vis.nodes.has(b.d.id));
     VS = new Set(VB);
     VL = vis.causal
-      .map((e) => /** @type {Link} */ ({ k: 'c', id: e.id, a: bod(e.src), b: bod(e.dst), level: e.level, r: e.r }))
+      .map((e) => /** @type {Link} */ ({ k: 'c', id: e.id, a: bod(e.src), b: bod(e.dst), level: e.level, sub: e.sub, r: e.r }))
       .concat(vis.cors.map((c) => /** @type {Link} */ ({ k: 'r', id: '', a: bod(c.src), b: bod(c.dst), level: '', r: c.r })));
     layout.setActive(VB, VL);
   }
@@ -304,7 +305,9 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
         const on = isOn(l);
         const col = l.k === 'r' ? '#3fb6c9' : GC[/** @type {'A'} */ (l.level)];
         const fog = Math.min(l.a.fog, l.b.fog);
-        ctx.globalAlpha = hs ? (on ? 0.95 : 0.03) : (l.k === 'r' ? 0.35 : l.level === 'C' ? 0.25 : 0.6) * fog;
+        // B-는 같은 B색에서 알파만 낮춰 흐리게(B+와 구분). 등급 가중치·굵기는 그대로.
+        const dimB = l.level === 'B' && l.sub === '-' ? 0.72 : 1;
+        ctx.globalAlpha = (hs ? (on ? 0.95 : 0.03) : (l.k === 'r' ? 0.35 : l.level === 'C' ? 0.25 : 0.6)) * dimB * fog;
         ctx.strokeStyle = col;
         ctx.lineWidth = (l.level === 'A' ? 2 : l.level === 'B' ? 1.4 : 1) * (on ? 1.7 : 1) * Math.min(1.4, Math.max(0.6, k)) * Math.min(l.a.sf, l.b.sf);
         ctx.setLineDash(l.k === 'r' ? [2, 4] : l.level === 'D' ? [5, 4] : []);

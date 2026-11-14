@@ -2,7 +2,7 @@
 // 노드 상세 시트: 헤더·탭·항목 목록·관계도. 원본 render()·item()·cri()와 같은 문구.
 // 클릭은 이벤트 위임(data-act/data-id). inline onclick은 쓰지 않는다.
 // 루프·경로 탭: 계산·HTML은 explore.js. 경로 입력창은 재렌더 때 유지하고 제안·결과만 갈아 끼운다.
-import { GC, CC, CN, DIR_BTN, DIR_TEXT } from '../store/labels.js';
+import { GC, CC, CN, DIR_BTN, DIR_TEXT, levelText, levelColor } from '../store/labels.js';
 import { causalVisible } from '../store/select.js';
 import { SIGN_LABEL } from '../engine/graph.js';
 import { esc, flatHtml } from '../render/flatmap.js';
@@ -63,7 +63,15 @@ export function initPanel(o) {
   };
 
   /** @param {EdgeData[]} a */
-  const ord = (a) => a.slice().sort((x, y) => x.level.localeCompare(y.level) || Math.abs(y.r || 0) - Math.abs(x.r || 0));
+  const ord = (a) =>
+    a
+      .slice()
+      .sort(
+        (x, y) =>
+          x.level.localeCompare(y.level) ||
+          (y.sub || '').localeCompare(x.sub || '') ||
+          Math.abs(y.r || 0) - Math.abs(x.r || 0),
+      );
 
   /** @param {EdgeData} l */
   const evText = (l) =>
@@ -76,7 +84,7 @@ export function initPanel(o) {
    * @param {string} dir
    */
   const item = (st, l, other, dir) =>
-    `<div class="it"><div class="r1"><span class="g" style="background:${GC[l.level]}33;color:${l.level === 'C' ? '#bbb' : GC[l.level]}">${esc(l.level)}</span>` +
+    `<div class="it"><div class="r1"><span class="g" style="background:${GC[l.level]}33;color:${l.level === 'C' ? '#bbb' : levelColor(l.level, l.sub)}">${esc(levelText(l.level, l.sub))}</span>` +
     `<span class="sg">${esc(SIGN_LABEL[l.sign] ?? l.sign)}</span><span class="nm">${dir} ${esc(other.name)}</span>` +
     `<a class="go" data-act="go" data-id="${esc(other.id)}">이동 ›</a></div>` +
     `<div class="meta">${esc(l.id)}${l.r != null ? ` · r=${l.r}` : ''}${l.status && l.status !== 'open' ? ' · ' + esc(l.status) : ''}${causalVisible(graph, l, st.filters) ? '' : ' · 숨김'}</div>` +
