@@ -12,6 +12,7 @@ import { REGIMES } from '../schema/v2.js';
  * @property {number} thr
  * @property {boolean} showNR
  * @property {boolean} showCor
+ * @property {boolean} weak   B- 등급(약한 근거) 연결 포함 여부
  */
 
 /**
@@ -66,7 +67,8 @@ import { REGIMES } from '../schema/v2.js';
  *   | {type:'toggleLevel', level:string}
  *   | {type:'toggleCat', cat:string}
  *   | {type:'setThr', value:number}
- *   | {type:'toggle', key:'showNR'|'showCor'|'labAll'|'hideOrph'|'autoSpin'|'wobble'}
+ *   | {type:'resetFilters', filters:Filters}
+ *   | {type:'toggle', key:'showNR'|'showCor'|'weak'|'labAll'|'hideOrph'|'autoSpin'|'wobble'}
  *   | {type:'setHop', hop:1|2}
  *   | {type:'setDir', dir:'both'|'up'|'down'}
  *   | {type:'setTab', tab:'map'|'in'|'out'|'cor'|'loop'|'path'|'sim'}
@@ -98,7 +100,7 @@ export const SIM_DEPTH_MIN = 2;
 export const SIM_DEPTH_MAX = 6;
 /** @type {SimInput} */
 const SIM_DEFAULT = { start: null, sign: 1, regime: null, depth: 4 };
-const FILTER_KEYS = ['showNR', 'showCor'];
+const FILTER_KEYS = ['showNR', 'showCor', 'weak'];
 const PREF_KEYS = ['labAll', 'hideOrph', 'autoSpin', 'wobble'];
 
 /**
@@ -108,10 +110,20 @@ const PREF_KEYS = ['labAll', 'hideOrph', 'autoSpin', 'wobble'];
  */
 export function initialState(categories) {
   return {
-    filters: { levels: LEVELS.slice(), cats: categories.slice(), thr: 0, showNR: true, showCor: false },
+    filters: { levels: LEVELS.slice(), cats: categories.slice(), thr: 0, showNR: true, showCor: false, weak: true },
     view: { selected: null, hop: 1, dir: 'both', tab: 'in', flatAll: false, trace: null, pathTo: null, pathRev: false, pathQuery: '', search: '', sim: SIM_DEFAULT },
     prefs: { labAll: false, hideOrph: true, autoSpin: true, wobble: true },
   };
+}
+
+/**
+ * 앱 첫 화면용 기본 상태: 확실·유력(A, B+) 연결만. 약한 근거(B-)·후보·논쟁은 보기 설정에서 켠다.
+ * @param {string[]} categories
+ * @returns {AppState}
+ */
+export function defaultState(categories) {
+  const s = initialState(categories);
+  return { ...s, filters: { ...s.filters, levels: ['A', 'B'], weak: false } };
 }
 
 /**
@@ -154,7 +166,7 @@ function reduce(s, a) {
     }
     case 'toggle': {
       if (FILTER_KEYS.includes(a.key)) {
-        const key = /** @type {'showNR'|'showCor'} */ (a.key);
+        const key = /** @type {'showNR'|'showCor'|'weak'} */ (a.key);
         return { ...s, filters: { ...s.filters, [key]: !s.filters[key] } };
       }
       if (PREF_KEYS.includes(a.key)) {
@@ -162,6 +174,11 @@ function reduce(s, a) {
         return { ...s, prefs: { ...s.prefs, [key]: !s.prefs[key] } };
       }
       throw new TypeError(`unknown toggle key: ${String(a.key)}`);
+    }
+    case 'resetFilters': {
+      // 호출자가 initialState(...).filters를 넘긴다. 복사해서 저장한다.
+      const f = a.filters;
+      return { ...s, filters: { ...f, levels: f.levels.slice(), cats: f.cats.slice() } };
     }
     case 'setHop':
       return a.hop === 1 || a.hop === 2 ? { ...s, view: { ...s.view, hop: a.hop } } : s;
@@ -290,6 +307,7 @@ function restore(initial, key, storage, nodeIds) {
       thr,
       showNR: bool(f.showNR, initial.filters.showNR),
       showCor: bool(f.showCor, initial.filters.showCor),
+      weak: bool(f.weak, initial.filters.weak),
     },
     prefs: {
       labAll: bool(p.labAll, initial.prefs.labAll),

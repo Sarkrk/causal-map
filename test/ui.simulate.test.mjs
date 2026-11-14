@@ -42,12 +42,11 @@ test('simHtml: 경고 메시지·시작 노드명도 이스케이프', () => {
   assert.ok(!html.includes('<script>'));
 });
 
-test("simHtml: '상대 점수' 라벨과 확률 아님 주석", () => {
+test('simHtml: 점수·내부 통계 문구를 싣지 않는다', () => {
   const g = fixture();
   const html = simHtml(simulate(g, 's', 1), g);
-  assert.ok(html.includes('상대 점수'));
-  assert.ok(html.includes(SCORE_NOTE));
-  assert.ok(html.includes('확률 아님'));
+  assert.ok(!html.includes('상대 점수'));
+  assert.ok(!html.includes(SCORE_NOTE));
   assert.ok(!html.includes('%'), '% 표기 없음');
 });
 
@@ -90,12 +89,12 @@ test('simHtml: truncated 표시는 truncated일 때만', () => {
   assert.ok(simHtml({ ...r, truncated: true }, g).includes('경로가 많아 일부만 계산'));
 });
 
-test('simHtml: 경로 신뢰도·가장 약한 등급 표시, 영향 없음 메시지', () => {
+test('simHtml: 경로 단계 수 표시, 영향 없음 메시지', () => {
   const g = fixture();
   const r = simulate(g, 's', 1);
   const h = simHtml(r, g);
-  assert.ok(h.includes('경로 신뢰도'));
-  assert.ok(h.includes('가장 약한 등급'));
+  assert.ok(!h.includes('경로 신뢰도'));
+  assert.match(h, /\d단계/);
   assert.ok(simHtml({ ...r, impacts: [], paths: [], warnings: [] }, g).includes('전파되는 노드가 없습니다'));
 });
 
@@ -123,7 +122,7 @@ test('simTabHtml: 폼에 국면 7종(평시 가정 + 6)·깊이 2~6, 실행 전�
 test('simTabHtml·simTraceAt: 실행 후 결과와 trace 해석', () => {
   const { g, st } = ran();
   const s = st.get();
-  assert.ok(simTabHtml(g, s).includes('상대 점수'));
+  assert.ok(simTabHtml(g, s).includes('영향 노드'));
   assert.equal(simResult(g, s), simResult(g, s), '메모이즈');
   const tp = simTraceAt(g, s, 'path', 0);
   assert.ok(tp && tp.nodes[0] === 's' && tp.kind === 'path');

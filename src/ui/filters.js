@@ -1,7 +1,8 @@
 // @ts-check
 // 필터 칩(등급·범주), |r| 슬라이더, 표시 토글. 원본 chip()·tg()·thrEl 동작.
 // 화면 상태는 store를 따라간다(subscribe에서 칩 on/off 동기화).
-import { LEVELS, CC, GC, CN } from '../store/labels.js';
+import { LEVELS, LEVEL_TEXT, CC, GC, CN } from '../store/labels.js';
+import { defaultState } from '../store/store.js';
 
 /** @typedef {import('../store/store.js').AppState} AppState */
 /** @typedef {import('../store/store.js').Store} Store */
@@ -11,12 +12,14 @@ import { LEVELS, CC, GC, CN } from '../store/labels.js';
  * @param {{
  *   graph: Graph, store: Store, categories: string[],
  *   flv: HTMLElement, fcat: HTMLElement, thrEl: HTMLInputElement, thrv: HTMLElement,
- *   toggles: {tnr: HTMLElement, tcor: HTMLElement, tlab: HTMLElement, torp: HTMLElement, tspin: HTMLElement, twob: HTMLElement}
+ *   reset: HTMLElement, badge: HTMLElement,
+ *   toggles: {tweak: HTMLElement, tnr: HTMLElement, tcor: HTMLElement, tlab: HTMLElement, torp: HTMLElement, tspin: HTMLElement, twob: HTMLElement}
  * }} o
  * @returns {void}
  */
 export function initFilters(o) {
-  const { graph, store, categories, flv, fcat, thrEl, thrv, toggles } = o;
+  const { graph, store, categories, flv, fcat, thrEl, thrv, toggles, reset, badge } = o;
+  const base = defaultState(categories);
 
   /** @type {Map<HTMLElement, (st: AppState) => boolean>} */
   const chips = new Map();
@@ -40,26 +43,14 @@ export function initFilters(o) {
     return b;
   }
 
-  /** @type {Record<string, number>} */
-  const cnt = {};
-  /** @type {Record<string, number>} */
-  const cntSub = {};
-  graph.edges.forEach((e) => {
-    cnt[e.level] = (cnt[e.level] || 0) + 1;
-    if (e.level === 'B' && e.sub) cntSub[e.sub] = (cntSub[e.sub] || 0) + 1;
-  });
-
   for (const v of LEVELS) {
-    // B 칩은 B+·B-를 모두 포함한다(필터는 A~D 4개 유지). 칩에는 합계만, 세분은 툴팁에.
-    const sub = v === 'B' && cntSub['+'] + cntSub['-'] > 0 ? ` (B+ ${cntSub['+'] || 0} · B- ${cntSub['-'] || 0})` : '';
-    const b = chip(
+    chip(
       flv,
-      `${v} ${cnt[v] || 0}`,
+      LEVEL_TEXT[/** @type {'A'} */ (v)],
       GC[/** @type {'A'} */ (v)],
       (st) => st.filters.levels.includes(v),
       () => store.dispatch({ type: 'toggleLevel', level: v }),
     );
-    if (sub) b.title = `B${sub}`;
   }
   for (const k of categories) {
     chip(
@@ -75,8 +66,9 @@ export function initFilters(o) {
   thrEl.addEventListener('input', paintThr);
   thrEl.addEventListener('input', () => store.dispatch({ type: 'setThr', value: +thrEl.value }));
 
-  /** @type {[HTMLElement, 'showNR'|'showCor'|'labAll'|'hideOrph'|'autoSpin'|'wobble', (st: AppState) => boolean][]} */
+  /** @type {[HTMLElement, 'showNR'|'showCor'|'weak'|'labAll'|'hideOrph'|'autoSpin'|'wobble', (st: AppState) => boolean][]} */
   const tg = [
+    [toggles.tweak, 'weak', (st) => st.filters.weak],
     [toggles.tnr, 'showNR', (st) => st.filters.showNR],
     [toggles.tcor, 'showCor', (st) => st.filters.showCor],
     [toggles.tlab, 'labAll', (st) => st.prefs.labAll],
@@ -88,8 +80,31 @@ export function initFilters(o) {
     el.addEventListener('click', () => store.dispatch({ type: 'toggle', key }));
   }
 
+  // 시트 헤더 드래그(pointerdown·capture)와 겹치지 않게 막는다.
+  reset.addEventListener('pointerdown', (e) => e.stopPropagation());
+  reset.addEventListener('click', () => store.dispatch({ type: 'resetFilters', filters: base.filters }));
+
+  /** 기본값과 다른 필터 개수(☰ 배지·초기화 표시). */
+  const activeCount = (/** @type {AppState} */ st) => {
+    const f = st.filters;
+    const b = base.filters;
+    return (
+      f.levels.filter((x) => !b.levels.includes(x)).length +
+      b.levels.filter((x) => !f.levels.includes(x)).length +
+      b.cats.filter((c) => !f.cats.includes(c)).length +
+      (f.thr > 0 ? 1 : 0) +
+      (f.showNR !== b.showNR ? 1 : 0) +
+      (f.showCor !== b.showCor ? 1 : 0) +
+      (f.weak !== b.weak ? 1 : 0)
+    );
+  };
+
   /** @param {AppState} st */
   function sync(st) {
+    const n = activeCount(st);
+    badge.textContent = String(n);
+    badge.style.display = n ? 'flex' : 'none';
+    reset.style.visibility = n ? 'visible' : 'hidden';
     for (const [b, isOn] of chips) b.classList.toggle('on', isOn(st));
     thrEl.value = String(st.filters.thr);
     thrv.textContent = st.filters.thr.toFixed(2);

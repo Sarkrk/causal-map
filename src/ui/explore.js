@@ -6,7 +6,6 @@ import { findLoops as engineFindLoops } from '../engine/cycles.js';
 import { findPaths as engineFindPaths } from '../engine/paths.js';
 import { SIGN_LABEL, searchNodes } from '../engine/graph.js';
 import { causalVisible } from '../store/select.js';
-import { levelText } from '../store/labels.js';
 import { esc } from '../render/flatmap.js';
 
 /** @typedef {import('../types.js').Graph} Graph */
@@ -31,9 +30,6 @@ const POLARITY = {
 
 /** 부호 → 배지 색 */
 const SIGN_COLOR = { '+': '#9ece6a', '-': '#f7768e', '±': '#9a9a9a' };
-
-const LOOP_HEAD =
-  '강화 루프(R)는 변화를 키우고, 균형 루프(B)는 되돌린다. 항목을 누르면 지도에 표시.';
 
 /**
  * 엔진 함수를 주입할 수 있는 탐색기. 같은 (graph, filters, sel, maxLen) 키는 엔진을 한 번만 부른다.
@@ -196,12 +192,6 @@ function chainHtml(g, edges) {
 }
 
 /**
- * @param {EdgeData[]} edges
- * @returns {string}
- */
-const gradeText = (edges) => edges.map((e) => esc(levelText(e.level, e.sub))).join('·');
-
-/**
  * 항목 한 줄 공통 래퍼. 선택된 항목은 .on + 배경.
  * @param {boolean} on
  * @param {string} attrs
@@ -226,7 +216,7 @@ function loopItemHtml(g, l, i, active) {
     `data-kind="loop" data-idx="${i}"`,
     `<div class="r1" style="flex-wrap:wrap"><span class="g" style="background:${p.color}33;color:${p.color}">${p.text}</span>` +
       `<span class="nm" style="font-size:14px;line-height:1.5">${chainHtml(g, l.edges)}</span></div>` +
-      `<div class="meta">등급 ${gradeText(l.edges)} · 길이 ${l.edges.length}</div>`,
+      `<div class="meta">${l.edges.length}단계</div>`,
   );
 }
 
@@ -244,7 +234,7 @@ function pathItemHtml(g, p, i, active) {
     `data-kind="path" data-idx="${i}"`,
     `<div class="r1" style="flex-wrap:wrap"><span class="g" style="background:${col}33;color:${col}">순효과 ${esc(SIGN_LABEL[p.sign] ?? p.sign)}</span>` +
       `<span class="nm" style="font-size:14px;line-height:1.5">${chainHtml(g, p.edges)}</span></div>` +
-      `<div class="meta">등급 ${gradeText(p.edges)} · 길이 ${p.edges.length}</div>`,
+      `<div class="meta">${p.edges.length}단계</div>`,
   );
 }
 
@@ -256,9 +246,8 @@ function pathItemHtml(g, p, i, active) {
  */
 export function loopTabHtml(g, st) {
   const items = loopItems(g, st);
-  const head = `<p class="sub" style="margin-top:6px;line-height:1.5">${LOOP_HEAD}</p>`;
-  if (items.length === 0) return head + '<p class="sub">이 노드를 지나는 4단계 이하 루프 없음(현재 필터 기준)</p>';
-  return head + items.map((l, i) => loopItemHtml(g, l, i, st.view.trace)).join('');
+  if (items.length === 0) return '<p class="sub">이 노드를 지나는 순환 고리가 없습니다.</p>';
+  return items.map((l, i) => loopItemHtml(g, l, i, st.view.trace)).join('');
 }
 
 /**
@@ -271,7 +260,7 @@ export function pathBoxHtml(g, st) {
   const sel = st.view.selected ?? '';
   return (
     `<div id="pbox" data-sel="${esc(sel)}">` +
-    `<input id="pq" type="search" placeholder="도착 노드 검색" autocomplete="off" value="${esc(st.view.pathQuery)}" style="width:100%;height:40px;border-radius:20px;border:1px solid var(--line);background:#2e2e2e;color:var(--tx);padding:0 14px;font-size:16px;outline:none">` +
+    `<input id="pq" type="search" placeholder="도착 노드 검색" autocomplete="off" value="${esc(st.view.pathQuery)}" style="width:100%;height:44px;border-radius:20px;border:1px solid var(--line);background:#2e2e2e;color:var(--tx);padding:0 14px;font-size:16px;outline:none">` +
     `<div id="psug" class="row" style="margin-top:6px">${suggestHtml(g, st.view.pathQuery, sel || null)}</div>` +
     `<div data-part="plist">${pathListHtml(g, st)}</div>` +
     `</div>`
@@ -287,7 +276,7 @@ export function pathBoxHtml(g, st) {
 export function pathListHtml(g, st) {
   const pv = pathItems(g, st);
   if (!pv) {
-    return '<p class="sub" style="margin-top:10px">위 칸에 도착 노드 이름을 입력해 고르면, 선택 노드와 그 노드 사이의 4단계 이하 경로를 보여줍니다.</p>';
+    return '<p class="sub" style="margin-top:10px">도착 노드를 검색해 고르세요.</p>';
   }
   /** @param {string} id */
   const nm = (id) => esc(g.byId.get(id)?.name ?? id);
@@ -296,11 +285,10 @@ export function pathListHtml(g, st) {
     `<span class="nm">${nm(pv.from)} → ${nm(pv.to)}</span>` +
     `<button class="chip" data-act="pathrev">⇄ 반대로</button></div>`;
   if (pv.items.length === 0) {
-    return head + '<p class="sub">4단계 이하 경로 없음(현재 필터 기준)</p>';
+    return head + '<p class="sub">연결 경로가 없습니다.</p>';
   }
   return (
     head +
-    `<div class="sub">상위 ${pv.items.length}개 · 짧은 순 → 등급 합 순</div>` +
     pv.items.map((p, i) => pathItemHtml(g, p, i, st.view.trace)).join('')
   );
 }

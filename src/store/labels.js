@@ -41,6 +41,9 @@ export const GC = { A: '#e5646a', B: '#6b9be8', C: '#7a7a7a', D: '#9a9a9a' };
 /** @type {string[]} 범주 키 전체 순서 */
 export const CATEGORY_ORDER = Object.keys(CN);
 
+/** 등급 칩 문구. */
+export const LEVEL_TEXT = { A: 'A 확실', B: 'B 유력', C: 'C 후보', D: 'D 논쟁' };
+
 /** @type {string[]} 등급 전체 */
 export const LEVELS = ['A', 'B', 'C', 'D'];
 

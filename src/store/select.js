@@ -30,6 +30,7 @@ function catsOk(g, src, dst, f) {
  */
 export function causalVisible(g, e, f) {
   if (!f.levels.includes(e.level)) return false;
+  if (!f.weak && e.level === 'B' && e.sub === '-') return false;
   if (e.r == null ? !f.showNR : Math.abs(e.r) < f.thr) return false;
   return catsOk(g, e.src, e.dst, f);
 }

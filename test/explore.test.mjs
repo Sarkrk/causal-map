@@ -55,13 +55,12 @@ test('loop tab: 항목 수·극성 배지·data-act 존재', () => {
   const html = loopTabHtml(graph, st);
   const items = html.match(/data-act="trace"/g) ?? [];
   assert.equal(items.length, loops.length);
-  assert.ok(html.includes('강화 루프(R)는 변화를 키우고'), '한 줄 설명');
   if (loops.length === 0) {
-    assert.ok(html.includes('이 노드를 지나는 4단계 이하 루프 없음(현재 필터 기준)'));
+    assert.ok(html.includes('순환 고리가 없습니다'));
   } else {
     assert.match(html, /R 강화|B 균형|\? 조건부/);
     assert.ok(html.includes('data-kind="loop" data-idx="0"'));
-    assert.ok(html.includes('등급 '));
+    assert.match(html, /\d단계/);
   }
 });
 
@@ -76,7 +75,7 @@ test('path tab: pathTo 없으면 입력창과 안내만', () => {
   assert.ok(html.includes('id="pq"'));
   assert.ok(html.includes('data-part="plist"'));
   assert.ok(!html.includes('data-act="trace"'));
-  assert.ok(pathListHtml(graph, st).includes('도착 노드 이름을 입력'));
+  assert.ok(pathListHtml(graph, st).includes('도착 노드를 검색해 고르세요'));
 });
 
 test('path tab: 항목·부호 배지·data-act, 0개면 안내 문구', () => {
@@ -101,7 +100,7 @@ test('path tab: 항목·부호 배지·data-act, 0개면 안내 문구', () => {
   assert.ok(html.includes('data-act="pathrev"'));
 
   const none = pathListHtml(graph, stateWith({ selected: from, pathTo: from }));
-  assert.ok(none.includes('4단계 이하 경로 없음(현재 필터 기준)'));
+  assert.ok(none.includes('연결 경로가 없습니다'));
 });
 
 test('suggest: 부분 일치, 선택 노드 제외, 최대 8개', () => {

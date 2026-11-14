@@ -2,7 +2,7 @@
 // 노드 상세 시트: 헤더·탭·항목 목록·관계도. 원본 render()·item()·cri()와 같은 문구.
 // 클릭은 이벤트 위임(data-act/data-id). inline onclick은 쓰지 않는다.
 // 루프·경로 탭: 계산·HTML은 explore.js. 경로 입력창은 재렌더 때 유지하고 제안·결과만 갈아 끼운다.
-import { GC, CC, CN, DIR_BTN, DIR_TEXT, levelText, levelColor } from '../store/labels.js';
+import { GC, CC, CN, DIR_BTN, levelText, levelColor } from '../store/labels.js';
 import { causalVisible } from '../store/select.js';
 import { SIGN_LABEL } from '../engine/graph.js';
 import { esc, flatHtml } from '../render/flatmap.js';
@@ -25,14 +25,14 @@ import { simTabHtml, simTraceAt } from './simulate.js';
 /** @typedef {import('../types.js').NodeData} NodeData */
 
 /**
- * 노드 설명 블록 HTML(desc·출처). 모두 이스케이프. 해당 필드가 없으면 ''.
+ * 노드 설명 블록 HTML(desc만, 출처 등 내부 정보는 싣지 않는다). 이스케이프. 해당 필드가 없으면 ''.
  * @param {NodeData} n
  * @returns {string}
  */
 export function nodeDescHtml(n) {
   let h = '';
-  if (n.desc) h += `<div class="ndesc-t">${esc(n.desc)}</div>`;
-  if (n.desc && n.descSrc) h += `<div class="sub ndesc-s" style="color:#888;font-size:11px">출처: ${esc(n.descSrc)}</div>`;
+  // 빌드 과정의 근거 메모가 설명 자리에 들어간 경우('엣지 근거: …')는 사용자에게 보이지 않는다.
+  if (n.desc && !n.desc.startsWith('엣지 근거')) h += `<div class="ndesc-t">${esc(n.desc)}</div>`;
   // 다른 이름(aka)은 데이터에만 두고 화면에는 표시하지 않는다(11/14 지시: 우선 내부 관리).
   return h;
 }
@@ -71,9 +71,9 @@ export function initPanel(o) {
           Math.abs(y.r || 0) - Math.abs(x.r || 0),
       );
 
-  /** @param {EdgeData} l */
-  const evText = (l) =>
-    l.evidence && l.evidence.length ? '근거: ' + esc(l.evidence.map((x) => x.kind + '·' + x.stance).join(', ')) + '<br>' : '';
+  const TOP_N = 5;
+  /** 펼친 목록(노드·탭 단위). */
+  const opened = new Set();
 
   /**
    * @param {AppState} st
@@ -84,17 +84,29 @@ export function initPanel(o) {
   const item = (st, l, other, dir) =>
     `<div class="it"><div class="r1"><span class="g" style="background:${GC[l.level]}33;color:${l.level === 'C' ? '#bbb' : levelColor(l.level, l.sub)}">${esc(levelText(l.level, l.sub))}</span>` +
     `<span class="sg">${esc(SIGN_LABEL[l.sign] ?? l.sign)}</span><span class="nm">${dir} ${esc(other.name)}</span>` +
-    `<a class="go" data-act="go" data-id="${esc(other.id)}">이동 ›</a></div>` +
-    `<div class="meta">${esc(l.id)}${l.r != null ? ` · r=${l.r}` : ''}${l.status && l.status !== 'open' ? ' · ' + esc(l.status) : ''}${causalVisible(graph, l, st.filters) ? '' : ' · 숨김'}</div>` +
-    `<div class="note">${evText(l)}${esc(l.note || '메모 없음')}</div></div>`;
+    `<a class="go" data-act="go" data-id="${esc(other.id)}" role="button">이동 ›</a></div>` +
+    (l.r != null ? `<div class="meta">강도 ${+Math.abs(l.r).toFixed(2)}</div>` : '') +
+    (l.note ? `<div class="note">${esc(l.note)}</div>` : '') +
+    `</div>`;
+
+  /**
+   * 상위 TOP_N개만 먼저 보이고 나머지는 접는다.
+   * @param {string} key  펼침 상태 키
+   * @param {string[]} rows
+   */
+  const fold = (key, rows) => {
+    if (rows.length === 0) return '<p class="sub">표시할 연결이 없습니다.</p>';
+    if (rows.length <= TOP_N || opened.has(key)) return rows.join('');
+    return rows.slice(0, TOP_N).join('') + `<button class="chip more" data-act="more" data-key="${esc(key)}">나머지 ${rows.length - TOP_N}개 보기</button>`;
+  };
 
   /** @param {CorData} l @param {string} selId */
   const cri = (l, selId) => {
     const o2 = nodeOf(l.src === selId ? l.dst : l.src);
     return (
       `<div class="it"><div class="r1"><span class="g" style="background:#3fb6c933;color:#3fb6c9">상관</span>` +
-      `<span class="nm">${esc(o2.name)}</span><a class="go" data-act="go" data-id="${esc(o2.id)}">이동 ›</a></div>` +
-      `<div class="meta">r=${l.r} · n=${esc(l.n || '')} · 인과 아님</div></div>`
+      `<span class="nm">${esc(o2.name)}</span><a class="go" data-act="go" data-id="${esc(o2.id)}" role="button">이동 ›</a></div>` +
+      `<div class="meta">강도 ${+Math.abs(l.r).toFixed(2)}</div></div>`
     );
   };
 
@@ -104,21 +116,25 @@ export function initPanel(o) {
     if (!sel) return;
     const n = nodeOf(sel);
     const { hop, dir, tab } = st.view;
-    const inn = graph.edges.filter((l) => l.dst === n.id);
-    const out = graph.edges.filter((l) => l.src === n.id);
+    const shown = (/** @type {EdgeData} */ l) => causalVisible(graph, l, st.filters);
+    const inn = graph.edges.filter((l) => l.dst === n.id && shown(l));
+    const out = graph.edges.filter((l) => l.src === n.id && shown(l));
+    // 보기 설정에서 꺼 둔 약한(B-) 연결이 있으면 켤 수 있는 버튼을 목록 끝에 둔다.
+    const hiddenWeak = !st.filters.weak && graph.edges.some((l) => (l.dst === n.id || l.src === n.id) && l.level === 'B' && l.sub === '-' && st.filters.levels.includes('B'));
+    const weakBtn = hiddenWeak ? '<button class="chip more" data-act="weak">B- 약한 연결도 보기</button>' : '';
     const cr = graph.cors.filter((c) => c.src === n.id || c.dst === n.id);
 
     nt.innerHTML = `<span class="dot" style="background:${CC[n.cat]}"></span>${esc(n.name)}`;
-    nsub.textContent = `${CN[n.cat]} · 원인 ${inn.length} · 결과 ${out.length} · 상관 ${cr.length} · 강조 ${hop}단계 · ${DIR_TEXT[dir]}`;
+    nsub.textContent = CN[n.cat];
 
     ndesc.innerHTML = nodeDescHtml(n);
 
     /** @type {Record<'map'|'in'|'out'|'cor', string>} */
     const B = {
       map: flatHtml(graph, st, n.id),
-      in: ord(inn).map((l) => item(st, l, nodeOf(l.src), '←')).join(''),
-      out: ord(out).map((l) => item(st, l, nodeOf(l.dst), '→')).join(''),
-      cor: cr.map((c) => cri(c, n.id)).join(''),
+      in: fold(sel + '|in', ord(inn).map((l) => item(st, l, nodeOf(l.src), '←'))) + weakBtn,
+      out: fold(sel + '|out', ord(out).map((l) => item(st, l, nodeOf(l.dst), '→'))) + weakBtn,
+      cor: fold(sel + '|cor', cr.map((c) => cri(c, n.id))),
     };
     const tabDefs = [
       ['map', '관계도', ''],
@@ -129,13 +145,14 @@ export function initPanel(o) {
       ['path', '경로', ''],
       ['sim', '시뮬', ''],
     ];
-    const tabs = tabDefs.map(
+    const tabs = tabDefs.filter(([k]) => k !== 'cor' || cr.length > 0 || tab === 'cor').map(
       ([k, label, cnt]) => `<button class="${k === tab ? 'on' : ''}" data-act="tab" data-tab="${k}">${label}${cnt}</button>`,
     );
     nhead.innerHTML =
       `<div class="tabs">${tabs.join('')}</div>` +
-      `<div class="tabs" style="margin-top:0;justify-content:flex-end"><button data-act="hop">${hop}단계 ⇄</button>` +
-      `<button data-act="dir">${DIR_BTN[dir]}</button></div>`;
+      (tab === 'map'
+        ? `<div class="tabs" style="margin-top:0;justify-content:flex-end"><button data-act="hop">${hop}단계 ⇄</button><button data-act="dir">${DIR_BTN[dir]}</button></div>`
+        : '');
 
     if (tab === 'loop') {
       nbody.innerHTML = loopTabHtml(graph, st);
@@ -153,7 +170,7 @@ export function initPanel(o) {
         nbody.innerHTML = pathBoxHtml(graph, st);
       }
     } else {
-      nbody.innerHTML = B[/** @type {'map'|'in'|'out'|'cor'} */ (tab)] || '<p class="sub">없음</p>';
+      nbody.innerHTML = B[/** @type {'map'|'in'|'out'|'cor'} */ (tab)] || `<p class="sub">없음</p>${tab === 'in' || tab === 'out' ? weakBtn : ''}`;
     }
     const fl = nbody.querySelector('.fl');
     if (fl && fl.scrollWidth > fl.clientWidth) fl.scrollLeft = (fl.scrollWidth - fl.clientWidth) / 2;
@@ -176,6 +193,11 @@ export function initPanel(o) {
       } else if (act === 'dir') {
         const next = st.view.dir === 'both' ? 'up' : st.view.dir === 'up' ? 'down' : 'both';
         store.dispatch({ type: 'setDir', dir: next });
+      } else if (act === 'weak') {
+        store.dispatch({ type: 'toggle', key: 'weak' });
+      } else if (act === 'more') {
+        opened.add(a.getAttribute('data-key'));
+        render(st);
       } else if (act === 'flatall') {
         store.dispatch({ type: 'toggleFlatAll' });
       } else if (act === 'trace') {

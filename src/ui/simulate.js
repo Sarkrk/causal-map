@@ -70,9 +70,6 @@ export function simResult(g, st) {
   return r;
 }
 
-/** @param {number} n */
-const fmt = (n) => (Math.round(n * 100) / 100).toFixed(2);
-
 /**
  * 영향 노드의 시차 문구. 시차가 모두 알려진 경로의 최소 누적 시차 기준.
  * @param {SimImpact} imp
@@ -118,22 +115,21 @@ export function simHtml(r, g, active = null) {
     active.nodes.join('\u0001') === t.nodes.join('\u0001');
   const onStyle = (/** @type {boolean} */ on) => `cursor:pointer;${on ? 'background:#2e2e2e;border-radius:8px;' : ''}`;
   const dirText = r.shockSign === 1 ? '상승(+)' : '하락(−)';
-  let h = `<div class="sub" style="margin-top:10px;line-height:1.5">${nm(r.start)} ${dirText} 충격 · 국면: ${esc(r.regime ? (REGIME_LABEL[r.regime] ?? r.regime) : '평시 가정')}</div>`;
+  let h = `<div class="sub" style="margin-top:10px;line-height:1.5">${nm(r.start)} ${dirText} 충격</div>`;
   if (r.truncated) h += '<p class="sub" style="color:#e0af68">경로가 많아 일부만 계산했습니다.</p>';
   if (r.impacts.length === 0) return h + '<p class="sub">전파되는 노드가 없습니다(현재 필터·국면 기준).</p>';
 
-  h += `<div class="sec" style="margin-top:12px">영향 노드 <span class="sub" title="${esc(SCORE_NOTE)}">· 상대 점수 ⓘ</span></div>`;
-  h += `<div class="sub" style="line-height:1.5">상대 점수: ${esc(SCORE_NOTE)}.</div>`;
+  h += '<div class="sec" style="margin-top:12px">영향 노드</div>';
   for (const imp of r.impacts) {
     const col = DIR_COLOR[imp.sign] ?? DIR_COLOR['±'];
     h +=
       `<div class="it"><div class="r1"><span class="g" style="background:${col}33;color:${col}">${esc(DIR_ARROW[imp.sign] ?? '±')}</span>` +
       `<span class="nm">${nm(imp.id)}</span></div>` +
-      `<div class="meta" title="${esc(SCORE_NOTE)}">상대 점수 ${esc(fmt(Math.abs(imp.score)))} · ${esc(lagText(imp))} · 깊이 ${imp.depth}</div></div>`;
+      `<div class="meta">${esc(lagText(imp))}</div></div>`;
   }
 
   if (r.paths.length) {
-    h += '<div class="sec" style="margin-top:12px">핵심 전달 경로 <span class="sub">(누르면 지도에 강조)</span></div>';
+    h += '<div class="sec" style="margin-top:12px">핵심 전달 경로</div>';
     r.paths.forEach((p, i) => {
       const on = same(traceOf('path', p));
       const col = DIR_COLOR[p.sign] ?? DIR_COLOR['±'];
@@ -141,12 +137,12 @@ export function simHtml(r, g, active = null) {
         `<div class="it${on ? ' on' : ''}" data-act="simtrace" data-kind="path" data-idx="${i}" style="${onStyle(on)}">` +
         `<div class="r1" style="flex-wrap:wrap"><span class="g" style="background:${col}33;color:${col}">순효과 ${esc(SIGN_LABEL[p.sign] ?? p.sign)}</span>` +
         `<span class="nm" style="font-size:14px;line-height:1.5">${chain(g, p.nodes)}</span></div>` +
-        `<div class="meta">경로 신뢰도 ${esc(fmt(p.confidence))} · 가장 약한 등급 ${esc(p.minLevel)} · 길이 ${p.edges.length}</div></div>`;
+        `<div class="meta">${p.edges.length}단계</div></div>`;
     });
   }
 
   if (r.warnings.length) {
-    h += '<div class="sec" style="margin-top:12px">주의 <span class="sub">(누르면 지도에 강조)</span></div>';
+    h += '<div class="sec" style="margin-top:12px">주의</div>';
     r.warnings.forEach((w, i) => {
       const l = WARN_LABEL[w.kind] ?? { text: w.kind, color: '#9a9a9a' };
       const on = same(warnTrace(w));
@@ -202,13 +198,12 @@ export function simTabHtml(g, st) {
     .join('');
   let depthOpts = '';
   for (let d = SIM_DEPTH_MIN; d <= SIM_DEPTH_MAX; d++) depthOpts += `<option value="${d}"${sim.depth === d ? ' selected' : ''}>${d}단계</option>`;
-  const selStyle = 'height:34px;border-radius:16px;border:1px solid var(--line);background:#2e2e2e;color:var(--tx);padding:0 10px;font-size:14px';
+  const selStyle = 'height:44px;border-radius:22px;border:1px solid var(--line);background:#2e2e2e;color:var(--tx);padding:0 10px;font-size:14px';
   const form =
-    `<p class="sub" style="margin-top:6px;line-height:1.5">이 노드가 오르거나 내릴 때 인과 연결을 따라 어디가 어느 방향으로 움직일지 추정합니다. 예측이 아니라 근거 등급을 반영한 방향 추정입니다.</p>` +
     `<div class="row" style="margin-top:8px">${chip(sim.sign === 1, 'data-act="simsign" data-v="1"', '↑ 상승 충격')}${chip(sim.sign === -1, 'data-act="simsign" data-v="-1"', '↓ 하락 충격')}</div>` +
     `<div class="row" style="margin-top:8px;align-items:center"><label class="sub">국면 <select id="simreg" style="${selStyle}">${regOpts}</select></label>` +
     `<label class="sub">깊이 <select id="simdepth" style="${selStyle}">${depthOpts}</select></label></div>` +
-    `<div class="row" style="margin-top:8px"><button class="chip on" data-act="simrun">충격 시뮬레이션 실행</button></div>`;
+    `<div class="row" style="margin-top:8px"><button class="chip on" data-act="simrun">실행</button></div>`;
   const r = simResult(g, st);
-  return form + (r ? simHtml(r, g, trace) : '<p class="sub" style="margin-top:10px">입력을 고르고 실행을 누르세요.</p>');
+  return form + (r ? simHtml(r, g, trace) : '');
 }

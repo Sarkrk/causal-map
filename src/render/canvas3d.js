@@ -391,9 +391,9 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
           ctx.stroke();
         }
         const la = labAll ? 1 : hs ? (inH ? 1 : 0) : Math.max(0, Math.min(1, (k * n.sf * (0.55 + n.deg / 22) - 0.55) / 0.35));
-        if (la > 0.02) lab.push([n, n.sx, n.sy + r + 12, la * (hs ? 1 : 0.55 + 0.45 * n.fog)]);
+        if (la > 0.02) lab.push([n, n.sx, n.sy + r + 12, la * (hs ? 1 : 0.8 + 0.2 * n.fog)]);
       });
-    ctx.font = '500 11px -apple-system,"Noto Sans KR",sans-serif';
+    ctx.font = '500 12px -apple-system,"Noto Sans KR",sans-serif';
     ctx.textAlign = 'center';
     lab.sort((u, v) => Number(v[0].d.id === sel) - Number(u[0].d.id === sel) || ((u[0].sz - v[0].sz) * 0.02 + (v[0].deg - u[0].deg)));
     /** @type {number[][]} */

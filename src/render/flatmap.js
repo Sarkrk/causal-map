@@ -191,7 +191,7 @@ export function flatHtml(graph, state, nid) {
   const head =
     `<div class="flh">` +
     (dir !== 'down' ? `<span>← ${leftLab} ${C1.length}</span>` : '<span></span>') +
-    `<span>${hop}단계 · 표시 필터 적용</span>` +
+    `<span>${hop}단계</span>` +
     (dir !== 'up' ? `<span>${rightLab} ${E1.length} →</span>` : '<span></span>') +
     `</div>`;
   const reachable = dir === 'up' ? c1.length : dir === 'down' ? e1.length : c1.length + e1.length;
@@ -199,10 +199,10 @@ export function flatHtml(graph, state, nid) {
     head +
     (reachable
       ? `<div class="fl"><svg width="${hop === 1 ? '100%' : Wd}" ${hop === 1 ? `style="min-width:${Wd}px"` : ''} height="${Hd}" viewBox="0 0 ${Wd} ${Hd}" xmlns="http://www.w3.org/2000/svg"><defs>${mk}</defs>${sv}</svg></div>`
-      : '<p class="sub">표시 중인 연결 없음(☰에서 등급·범주를 켜 보세요)</p>') +
+      : '<p class="sub">표시 중인 연결이 없습니다. ☰에서 등급·범주를 켜 보세요.</p>') +
     (more > 0 || flatAll
-      ? `<button class="chip" style="margin-top:6px" data-act="flatall">${flatAll ? '핵심만 보기 (등급순 8개)' : `나머지 ${more}개 더 보기`}</button>`
+      ? `<button class="chip" style="margin-top:6px" data-act="flatall">${flatAll ? '핵심만 보기' : `나머지 ${more}개 더 보기`}</button>`
       : '') +
-    `<p class="sub">칸을 누르면 그 노드로 이동 · 선 색 = 등급 · 원 안 기호 = 방향(+ 같이 / − 반대)</p>`
+    ''
   );
 }

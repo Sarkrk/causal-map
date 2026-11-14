@@ -105,12 +105,12 @@ test('suggestHtml: aka로도 제안되고 입력 노드는 제외', () => {
   assert.ok(!suggestHtml(g, 'base', '정책금리').includes('data-id="정책금리"'));
 });
 
-test('nodeDescHtml: desc·출처 표시, 다른 이름은 숨김, 없으면 빈 문자열', () => {
+test('nodeDescHtml: desc만 표시(출처·다른 이름은 숨김), 없으면 빈 문자열', () => {
   assert.equal(nodeDescHtml(mk('X')), '');
   assert.equal(nodeDescHtml(/** @type {any} */ ({ ...mk('X'), desc: null, aka: [] })), '');
   const h = nodeDescHtml(/** @type {any} */ ({ ...mk('X', ['a', 'b', 'c']), desc: '설명', descSrc: '한은 p.1' }));
   assert.ok(h.includes('설명'));
-  assert.ok(h.includes('출처: 한은 p.1'));
+  assert.ok(!h.includes('출처') && !h.includes('한은 p.1'));
   assert.ok(!h.includes('다른 이름'));
   // 출처는 desc가 있을 때만
   assert.ok(!nodeDescHtml(/** @type {any} */ ({ ...mk('X'), descSrc: '출처만' })).includes('출처'));

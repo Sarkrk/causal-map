@@ -26,7 +26,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 #q:focus-visible{outline:none}
 #sw::before{content:"⌕";position:absolute;left:var(--s4);top:10px;color:var(--mu);font-size:19px;z-index:1;pointer-events:none}
 #sug{position:absolute;left:0;right:0;top:52px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;display:none;max-height:50vh;overflow-y:auto}
-#sug div{padding:var(--s3) var(--s4);border-bottom:1px solid var(--line);font-size:var(--f3)}
+#sug div{min-height:48px;display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s4);border-bottom:1px solid var(--line);font-size:var(--f3)}
 #sug div:last-child{border-bottom:0}
 #sug div:active{background:var(--card)}
 .fab{width:44px;height:44px;border-radius:var(--pill);border:1px solid var(--line);background:rgba(36,36,38,.92);box-shadow:var(--sh);color:var(--tx);font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(8px);transition:background .15s,border-color .15s}
@@ -38,6 +38,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 #zoombox .fab+.fab{border-top:1px solid var(--line)}
 #zoombox .fab:hover{background:rgba(255,255,255,.06)}
 #zoombox .fab:active{background:var(--accbg)}
+#stat:empty{display:none}
 #stat{position:fixed;left:var(--s3);bottom:calc(env(safe-area-inset-bottom) + var(--s4));font-size:var(--f1);color:var(--mu);z-index:4;pointer-events:none;background:rgba(28,28,30,.6);padding:var(--s1) var(--s2);border-radius:var(--pill)}
 /* 시트 */
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--panel);border-radius:var(--r) var(--r) 0 0;border-top:1px solid var(--line);
@@ -52,10 +53,12 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 h2{margin:0;font-size:var(--f4);font-weight:600;display:flex;align-items:center;gap:var(--s2)}
 .dot{width:10px;height:10px;border-radius:50%;flex:none}
 .sub{color:var(--mu);font-size:var(--f2);margin-top:var(--s1)}
-#nsh{position:relative}#nt{padding-right:64px}#nshare{position:absolute;right:var(--s4);top:var(--s3);padding:var(--s1) var(--s3);font-size:var(--f1)}
+#nsh{position:relative}#nt{padding-right:132px}#nbtns{position:absolute;right:var(--s3);top:var(--s2);display:flex;gap:var(--s1)}#nbtns .chip{padding:0 var(--s3);font-size:var(--f2)}#nclose{width:44px;padding:0;font-size:var(--f3)}
+#fbadge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:9px;background:var(--acc);color:#0b1d24;font-size:11px;font-weight:700;display:none;align-items:center;justify-content:center;padding:0 4px}#fb{position:relative}
+#freset{margin-left:auto;font-size:var(--f2);color:var(--acc)}
 /* 탭·칩 */
 .tabs{display:flex;gap:var(--s2);margin:var(--s3) 0 var(--s2);overflow-x:auto;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
-.tabs button,.chip{border:1px solid var(--line);background:var(--card);color:var(--tx);border-radius:var(--pill);padding:var(--s2) var(--s3);font-size:var(--f2);line-height:1.2;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,color .15s}
+.tabs button,.chip{min-height:44px;border:1px solid var(--line);background:var(--card);color:var(--tx);border-radius:var(--pill);padding:var(--s2) var(--s3);font-size:var(--f2);line-height:1.2;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,color .15s}
 .tabs button:active,.chip:active{background:#3a3a3e}
 .tabs button.on,.chip.on{background:var(--accbg);border-color:var(--accln);color:var(--acc);font-weight:600}
 .chip{--stripe:transparent}
@@ -67,8 +70,9 @@ h2{margin:0;font-size:var(--f4);font-weight:600;display:flex;align-items:center;
 .g{font-size:var(--f1);font-weight:700;border-radius:var(--s1);padding:1px 6px;flex:none}
 .sg{font-weight:700;width:14px;text-align:center;flex:none}
 .nm{flex:1;color:var(--tx);text-decoration:none}
-.go{color:var(--acc);font-size:var(--f2);flex:none;padding:var(--s1);cursor:pointer}
-.meta{font-size:var(--f1);color:var(--mu);margin-top:var(--s1);padding-left:22px}
+.go{color:var(--acc);font-size:var(--f2);flex:none;padding:var(--s3);margin:calc(-1 * var(--s3)) calc(-1 * var(--s2)) calc(-1 * var(--s3)) 0;cursor:pointer}
+.more{width:100%;margin-top:var(--s2);justify-content:center}
+.meta{font-size:var(--f2);color:var(--mu);margin-top:var(--s1);padding-left:22px}
 .note{font-size:var(--f2);color:#b4b6bb;margin-top:var(--s2);padding-left:22px;display:none;line-height:1.5}
 .it.x .note{display:block}
 .sec{font-size:var(--f1);font-weight:600;color:var(--mu);margin:var(--s4) 0 var(--s2);padding-top:var(--s4);border-top:1px solid var(--line);letter-spacing:.06em}
@@ -81,7 +85,7 @@ h2{margin:0;font-size:var(--f4);font-weight:600;display:flex;align-items:center;
 .lg span{display:flex;align-items:center;gap:var(--s1)}
 .sw{display:inline-block;width:20px;height:0;border-top:2px solid}
 /* 슬라이더 */
-input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:36px;background:transparent;margin:0;cursor:pointer}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:44px;background:transparent;margin:0;cursor:pointer}
 input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--acc) var(--p,0%),#3c3c40 var(--p,0%))}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-8px;border-radius:50%;background:#e8eaed;border:2px solid var(--bg);box-shadow:0 1px 4px rgba(0,0,0,.5)}
 input[type=range]:active::-webkit-slider-thumb{background:var(--acc)}
@@ -92,20 +96,18 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 #toast.on{opacity:1}
 </style></head><body>
 <canvas id="cv"></canvas>
-<div id="top"><div id="sw"><input id="q" type="search" placeholder="노드 검색" autocomplete="off"><div id="sug"></div></div><button class="fab" id="fb" aria-label="필터">☰</button></div>
+<div id="top"><div id="sw"><input id="q" type="search" placeholder="노드 검색" autocomplete="off"><div id="sug"></div></div><button class="fab" id="fb" aria-label="보기 설정">☰<span id="fbadge"></span></button></div>
 <div id="zoombox"><button class="fab" id="zi" aria-label="확대">+</button><button class="fab" id="zo" aria-label="축소">−</button><button class="fab" id="zf" title="전체 보기" aria-label="전체 보기">⤢</button></div>
-<div id="stat"></div>
-<div class="sheet" id="ns"><div class="hd" id="nsh"><i></i><h2 id="nt"></h2><div class="sub" id="nsub"></div><button class="chip" id="nshare" type="button">링크</button></div><div class="bd" id="nb"></div></div>
-<div class="sheet" id="fs"><div class="hd" id="fsh"><i></i><h2>보기 설정</h2></div><div class="bd" id="fbd">
- <div class="sec">데이터</div><div id="dver" class="sub" style="line-height:1.6"></div>
- <div class="row" style="margin-top:8px"><button class="chip" id="dupd">⟳ 최신 데이터 받기</button></div><div id="dmsg" class="sub" style="margin-top:6px"></div>
+<div id="stat" role="status">불러오는 중…</div>
+<div class="sheet" id="ns"><div class="hd" id="nsh"><i></i><h2 id="nt"></h2><div class="sub" id="nsub"></div><div id="nbtns"><button class="chip" id="nshare" type="button">링크</button><button class="chip" id="nclose" type="button" aria-label="닫기">✕</button></div></div><div class="bd" id="nb"></div></div>
+<div class="sheet" id="fs"><div class="hd" id="fsh"><i></i><h2>보기 설정<button class="chip" id="freset" type="button">초기화</button></h2></div><div class="bd" id="fbd">
  <div class="sec">등급</div><div class="row" id="flv"></div>
- <div class="lg" style="margin-top:8px"><span><i class="sw" style="border-color:#e5646a"></i>A 확실</span><span><i class="sw" style="border-color:#6b9be8"></i>B 유력</span><span><i class="sw" style="border-color:#7a7a7a"></i>C 후보</span><span><i class="sw" style="border-color:#999;border-top-style:dashed"></i>D 논쟁</span><span><i class="sw" style="border-color:#3fb6c9;border-top-style:dotted"></i>상관(인과 아님)</span></div>
+ <div class="row" style="margin-top:8px"><button class="chip" id="tweak">B- 약한 연결 포함</button></div>
  <div class="sec">범주</div><div class="row" id="fcat"></div>
- <div class="sec">최소 상관 |r| <b id="thrv">0.00</b></div><input id="thr" type="range" min="0" max="0.6" step="0.05" value="0">
- <div class="row" style="margin-top:8px"><button class="chip on" id="tnr">상관값 없는 연결 포함</button></div>
- <div class="sec">표시</div><div class="row"><button class="chip" id="tcor">상관선(점선)</button><button class="chip" id="tlab">라벨 항상</button><button class="chip on" id="torp">고립 노드 숨김</button><button class="chip on" id="tspin">자동 회전</button><button class="chip on" id="twob">흔들림</button><button class="chip" id="trel">다시 배치</button></div>
- <p class="sub" style="margin-top:16px;line-height:1.5">배경 스와이프: 3D 회전(튕기면 관성) · 두 손가락: 확대·이동 · 점 탭: 관련 노드만 강조 + 상세 · 점 끌기: 위치 이동 · 빈 곳 탭: 해제 · 가만히 두면 천천히 회전</p>
+ <div class="sec">최소 연결 강도 <b id="thrv">0.00</b></div><input id="thr" type="range" min="0" max="0.6" step="0.05" value="0" aria-label="최소 연결 강도">
+ <div class="row" style="margin-top:8px"><button class="chip on" id="tnr">강도값 없는 연결 포함</button></div>
+ <div class="sec">표시</div><div class="row"><button class="chip" id="tcor">상관선(점선)</button><button class="chip" id="tlab">라벨 항상</button><button class="chip on" id="torp">연결 없는 점 숨김</button><button class="chip on" id="tspin">자동 회전</button><button class="chip on" id="twob">흔들림</button><button class="chip" id="trel">다시 배치</button></div>
+ <div class="sec"></div><div class="row"><button class="chip" id="dupd">⟳ 최신 데이터 받기</button></div><div id="dmsg" class="sub" style="margin-top:8px"></div>
 </div></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <script type="module" src="src/main.js"></script>

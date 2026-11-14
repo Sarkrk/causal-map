@@ -229,3 +229,17 @@ test('highlight: 상관선이 켜지면 both가 상관 이웃도 포함한다', 
   const got = highlight(graph, cor.src, 1, 'both', st.filters, v);
   assert.ok(got.has(cor.dst));
 });
+
+test('resetFilters: 넘긴 기본 필터로 돌아가고 weak 토글이 동작한다', async () => {
+  const { defaultState } = await import('../src/store/store.js');
+  const base = defaultState(['Other']);
+  assert.deepEqual(base.filters.levels, ['A', 'B']);
+  assert.equal(base.filters.weak, false);
+  const s = createStore(base, { storage: undefined });
+  s.dispatch({ type: 'toggle', key: 'weak' });
+  s.dispatch({ type: 'toggleLevel', level: 'C' });
+  s.dispatch({ type: 'setThr', value: 0.3 });
+  assert.equal(s.get().filters.weak, true);
+  s.dispatch({ type: 'resetFilters', filters: base.filters });
+  assert.deepEqual(s.get().filters, base.filters);
+});
