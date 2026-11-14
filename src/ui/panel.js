@@ -25,7 +25,7 @@ import { simTabHtml, simTraceAt } from './simulate.js';
 /** @typedef {import('../types.js').NodeData} NodeData */
 
 /**
- * 노드 설명 블록 HTML(desc·출처·다른 이름). 모두 이스케이프. 해당 필드가 없으면 ''.
+ * 노드 설명 블록 HTML(desc·출처). 모두 이스케이프. 해당 필드가 없으면 ''.
  * @param {NodeData} n
  * @returns {string}
  */
@@ -33,9 +33,7 @@ export function nodeDescHtml(n) {
   let h = '';
   if (n.desc) h += `<div class="ndesc-t">${esc(n.desc)}</div>`;
   if (n.desc && n.descSrc) h += `<div class="sub ndesc-s" style="color:#888;font-size:11px">출처: ${esc(n.descSrc)}</div>`;
-  if (Array.isArray(n.aka) && n.aka.length) {
-    h += `<div class="sub ndesc-a">다른 이름: ${n.aka.map((a) => esc(a)).join(' · ')}</div>`;
-  }
+  // 다른 이름(aka)은 데이터에만 두고 화면에는 표시하지 않는다(11/14 지시: 우선 내부 관리).
   return h;
 }
 

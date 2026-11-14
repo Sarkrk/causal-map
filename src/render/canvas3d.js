@@ -270,13 +270,66 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     const a = Math.atan2(y2 - y1, x2 - x1);
     const ex = x2 - Math.cos(a) * (r + 2);
     const ey = y2 - Math.sin(a) * (r + 2);
-    const s = Math.max(4, 6 * Math.min(cam.k, 1.6));
+    const s = Math.max(3, 6 * Math.min(Math.max(0.4, Math.pow(cam.k, 0.75)), 1.6));
     ctx.fillStyle = col;
     ctx.beginPath();
     ctx.moveTo(ex, ey);
     ctx.lineTo(ex - s * Math.cos(a - 0.42), ey - s * Math.sin(a - 0.42));
     ctx.lineTo(ex - s * Math.cos(a + 0.42), ey - s * Math.sin(a + 0.42));
     ctx.fill();
+  }
+
+
+  /** 범주별 구슬 스프라이트(그라디언트·테두리·하이라이트)를 한 번만 그려 두고 drawImage로 재사용한다. */
+  /** @type {Map<string, HTMLCanvasElement>} */
+  const sprites = new Map();
+  const SP = 192;
+  /** @param {string} hex @param {number} f  f<0 어둡게, f>0 밝게 */
+  function shade(hex, f) {
+    const n = parseInt(hex.slice(1), 16);
+    const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) =>
+      Math.round(f < 0 ? v * (1 + f) : v + (255 - v) * f),
+    );
+    return `rgb(${ch[0]},${ch[1]},${ch[2]})`;
+  }
+  /** @param {string} cat */
+  function sprite(cat) {
+    let c = sprites.get(cat);
+    if (c) return c;
+    const hex = CC[/** @type {'Policy'} */ (cat)] || '#999999';
+    c = document.createElement('canvas');
+    c.width = c.height = SP;
+    const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
+    const m = SP / 2;
+    const R = SP * 0.44;
+    // 바깥 은은한 후광
+    const halo = g.createRadialGradient(m, m, R * 0.8, m, m, m);
+    halo.addColorStop(0, shade(hex, 0) .replace('rgb', 'rgba').replace(')', ',0.30)'));
+    halo.addColorStop(1, shade(hex, 0).replace('rgb', 'rgba').replace(')', ',0)'));
+    g.fillStyle = halo;
+    g.fillRect(0, 0, SP, SP);
+    // 본체: 좌상단 광원 구슬
+    const body = g.createRadialGradient(m - R * 0.35, m - R * 0.4, R * 0.1, m, m, R);
+    body.addColorStop(0, shade(hex, 0.55));
+    body.addColorStop(0.45, shade(hex, 0));
+    body.addColorStop(1, shade(hex, -0.45));
+    g.fillStyle = body;
+    g.beginPath();
+    g.arc(m, m, R, 0, 6.283);
+    g.fill();
+    // 테두리(밝은 림)
+    g.lineWidth = SP * 0.035;
+    g.strokeStyle = shade(hex, 0.7).replace('rgb', 'rgba').replace(')', ',0.85)');
+    g.beginPath();
+    g.arc(m, m, R - g.lineWidth / 2, 0, 6.283);
+    g.stroke();
+    // 작은 반사광
+    g.fillStyle = 'rgba(255,255,255,0.55)';
+    g.beginPath();
+    g.ellipse(m - R * 0.32, m - R * 0.38, R * 0.22, R * 0.13, -0.6, 0, 6.283);
+    g.fill();
+    sprites.set(cat, c);
+    return c;
   }
 
   function draw() {
@@ -292,7 +345,8 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     const hs = em ? em.nodes : null;
     const eIds = em ? em.edgeIds : null;
     const k = cam.k;
-    const zk = Math.max(0.7, Math.min(k, 2.2));
+    // 축소 시 노드가 상대적으로 커 보이지 않도록 반지름도 줌에 비례해 작아지게 한다(완만하게, 하한 0.22).
+    const zk = Math.max(0.4, Math.min(Math.pow(k, 0.75), 2.2));
     /** @param {Link} l */
     const isOn = (l) =>
       !!hs &&
@@ -334,10 +388,17 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
           ctx.fill();
         }
         ctx.globalAlpha = hs ? (inH ? 1 : 0.06) : n.fog;
-        ctx.fillStyle = CC[n.d.cat];
-        ctx.beginPath();
-        ctx.arc(n.sx, n.sy, hs && !inH ? r * 0.7 : r, 0, 6.283);
-        ctx.fill();
+        const rr = hs && !inH ? r * 0.7 : r;
+        if (rr < 3.2) {
+          // 아주 작을 땐 스프라이트 대신 단색 점(번짐 방지)
+          ctx.fillStyle = CC[n.d.cat];
+          ctx.beginPath();
+          ctx.arc(n.sx, n.sy, Math.max(rr, 1.1), 0, 6.283);
+          ctx.fill();
+        } else {
+          const d = (rr / 0.44) * 2; // 스프라이트의 본체 반지름이 44%
+          ctx.drawImage(sprite(n.d.cat), n.sx - d / 2, n.sy - d / 2, d, d);
+        }
         if (n.d.id === sel) {
           ctx.globalAlpha = 1;
           ctx.strokeStyle = '#fff';
@@ -449,7 +510,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     let bd = 1e9;
     VB.forEach((n) => {
       const d = Math.hypot(n.sx - sx, n.sy - sy);
-      const r = Math.max(16, n.rad * n.sf * cam.k + 8);
+      const r = Math.max(14, n.rad * n.sf * Math.max(0.4, Math.min(Math.pow(cam.k, 0.75), 2.2)) * 1.5 + 8);
       const sc = d + n.sz * 0.02;
       if (d < r && sc < bd) {
         bd = sc;

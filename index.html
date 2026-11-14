@@ -60,10 +60,52 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 #nsh{position:relative}#nt{padding-right:64px}#nshare{position:absolute;right:16px;top:8px;padding:5px 11px;font-size:12px}
 #toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 70px);transform:translateX(-50%);background:#f2f2f2;color:#1e1e1e;padding:8px 14px;border-radius:16px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
 #toast.on{opacity:1}
+
+/* ── UI 다듬기(11/14) ── */
+:root{--card:#2b2b2e;--hi:rgba(255,255,255,.07);--sh:0 4px 14px rgba(0,0,0,.45)}
+.fab{background:linear-gradient(180deg,rgba(52,52,56,.95),rgba(36,36,40,.95));border:1px solid rgba(255,255,255,.12);box-shadow:var(--sh),inset 0 1px 0 var(--hi);color:#e8e8ea;cursor:pointer;transition:transform .12s,background .15s,border-color .15s}
+.fab:hover{border-color:rgba(168,130,255,.6)}
+.fab:active{transform:scale(.92);background:#3a3a40}
+#zoombox{gap:0;background:rgba(36,36,40,.92);border:1px solid rgba(255,255,255,.12);border-radius:24px;box-shadow:var(--sh);padding:3px;backdrop-filter:blur(10px)}
+#zoombox .fab{background:transparent;border:0;box-shadow:none;width:42px;height:40px;border-radius:20px;font-size:20px}
+#zoombox .fab:active{background:rgba(168,130,255,.25)}
+#zoombox .fab+.fab{border-top:1px solid rgba(255,255,255,.08);border-radius:0}
+#zoombox .fab:first-child{border-radius:20px 20px 0 0}#zoombox .fab:last-child{border-radius:0 0 20px 20px}
+#q{background:rgba(36,36,40,.92);border:1px solid rgba(255,255,255,.12);box-shadow:var(--sh);transition:border-color .15s,box-shadow .15s}
+#q:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(168,130,255,.2),var(--sh)}
+#sug{box-shadow:var(--sh);border-color:rgba(255,255,255,.12)}
+#sug div:last-child{border-bottom:0}
+.sheet{background:linear-gradient(180deg,#2c2c30,#232326);border-top:1px solid rgba(255,255,255,.1);box-shadow:0 -10px 36px rgba(0,0,0,.55)}
+.hd{padding:10px 16px 6px}
+.hd i{width:44px;height:5px;border-radius:3px;background:rgba(255,255,255,.28);margin:0 auto 10px;transition:background .15s,width .15s}
+.hd:active i{background:var(--acc);width:56px}
+.tabs button,.chip{background:var(--card);border:1px solid rgba(255,255,255,.1);color:#d8d8dc;cursor:pointer;transition:background .15s,border-color .15s,transform .1s}
+.tabs button:active,.chip:active{transform:scale(.95)}
+.tabs button.on,.chip.on{background:linear-gradient(180deg,#b79cff,#9a73f5);color:#16121f;border-color:#b79cff;box-shadow:0 2px 8px rgba(168,130,255,.35)}
+.it{border-bottom:1px solid rgba(255,255,255,.06)}
+.sec{font-weight:600;letter-spacing:.04em;color:#9a9aa2}
+input[type=range]{-webkit-appearance:none;appearance:none;height:28px;background:transparent;margin:6px 0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--acc) var(--p,0%),#3b3b42 var(--p,0%))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;margin-top:-9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#d9ccff 60%,#a882ff);border:2px solid #1e1e22;box-shadow:0 2px 8px rgba(0,0,0,.6);transition:transform .12s}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.18)}
+input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:#3b3b42}
+input[type=range]::-moz-range-progress{height:6px;border-radius:3px;background:var(--acc)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#d9ccff;border:2px solid #1e1e22;box-shadow:0 2px 8px rgba(0,0,0,.6)}
+input[type=range]:focus-visible{outline:2px solid rgba(168,130,255,.6);outline-offset:4px;border-radius:6px}
+button:focus-visible{outline:2px solid rgba(168,130,255,.8);outline-offset:2px}
+#sw::before{z-index:1;pointer-events:none}
+#stat{background:rgba(30,30,30,.6);padding:3px 8px;border-radius:10px}
+#zoombox .fab{backdrop-filter:none}
+#zoombox .fab:hover{background:rgba(255,255,255,.08)}
+.chip{--stripe:transparent;box-shadow:inset 3px 0 0 var(--stripe)}
+.chip.on{box-shadow:inset 3px 0 0 var(--stripe),0 2px 8px rgba(168,130,255,.35)}
+:root{--card:#34343a}
+input[type=range]{height:36px}
+#q:focus{box-shadow:var(--sh)}#q:focus-visible{border-color:var(--acc);box-shadow:0 0 0 3px rgba(168,130,255,.2),var(--sh)}
 </style></head><body>
 <canvas id="cv"></canvas>
 <div id="top"><div id="sw"><input id="q" type="search" placeholder="노드 검색" autocomplete="off"><div id="sug"></div></div><button class="fab" id="fb" aria-label="필터">☰</button></div>
-<div id="zoombox"><button class="fab" id="zi">+</button><button class="fab" id="zo">−</button><button class="fab" id="zf" title="전체 보기">⤢</button></div>
+<div id="zoombox"><button class="fab" id="zi" aria-label="확대">+</button><button class="fab" id="zo" aria-label="축소">−</button><button class="fab" id="zf" title="전체 보기" aria-label="전체 보기">⤢</button></div>
 <div id="stat"></div>
 <div class="sheet" id="ns"><div class="hd" id="nsh"><i></i><h2 id="nt"></h2><div class="sub" id="nsub"></div><button class="chip" id="nshare" type="button">링크</button></div><div class="bd" id="nb"></div></div>
 <div class="sheet" id="fs"><div class="hd" id="fsh"><i></i><h2>보기 설정</h2></div><div class="bd" id="fbd">

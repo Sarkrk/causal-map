@@ -33,7 +33,7 @@ export function initFilters(o) {
     const b = document.createElement('button');
     b.className = 'chip';
     b.textContent = txt;
-    if (col) b.style.boxShadow = `inset 3px 0 0 ${col}`;
+    if (col) b.style.setProperty('--stripe', col);
     b.addEventListener('click', act);
     par.appendChild(b);
     chips.set(b, isOn);
@@ -71,6 +71,8 @@ export function initFilters(o) {
     );
   }
 
+  const paintThr = () => thrEl.style.setProperty('--p', ((+thrEl.value - +(thrEl.min || 0)) / ((+thrEl.max || 1) - +(thrEl.min || 0))) * 100 + '%');
+  thrEl.addEventListener('input', paintThr);
   thrEl.addEventListener('input', () => store.dispatch({ type: 'setThr', value: +thrEl.value }));
 
   /** @type {[HTMLElement, 'showNR'|'showCor'|'labAll'|'hideOrph'|'autoSpin'|'wobble', (st: AppState) => boolean][]} */
@@ -91,6 +93,7 @@ export function initFilters(o) {
     for (const [b, isOn] of chips) b.classList.toggle('on', isOn(st));
     thrEl.value = String(st.filters.thr);
     thrv.textContent = st.filters.thr.toFixed(2);
+    paintThr();
     for (const [el, , get] of tg) el.classList.toggle('on', get(st));
   }
 
