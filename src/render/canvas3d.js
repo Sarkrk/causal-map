@@ -231,14 +231,35 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     return [x1 * c1 - z1 * s1 + cam.cx, y + cam.cy, x1 * s1 + z1 * c1 + cam.cz];
   }
 
+  /** 회전 중심을 항상 보이는 전체 노드의 무게중심으로 둔다. */
+  function pivot() {
+    const m = VB.length;
+    if (!m) return;
+    let x = 0, y = 0, z = 0;
+    for (const n of VB) { x += n.x; y += n.y; z += n.z; }
+    cam.cx = x / m; cam.cy = y / m; cam.cz = z / m;
+  }
+
+  /** 월드 좌표 한 점이 화면 (0, offY) 근처에 오도록 하는 px·py. 회전 중심은 그대로 둔다. */
+  function centerFor(wx, wy, wz, k, offY) {
+    pivot();
+    const [x1, y1, z2] = rot(wx, wy, wz);
+    const f = F / (F + Math.max(z2, -F * 0.8));
+    return { px: -x1 * f * k, py: offY - y1 * f * k, k };
+  }
+
   function project() {
+    pivot();
     const t = (performance.now() - T0) / 1000;
     const a = store.get().prefs.wobble ? 4 : 0;
+    const ie = 1 - Math.pow(1 - Math.min(1, t / 1.3), 3);
+    const SC = 0.35 + 0.65 * ie; // 첫 화면: 중심에서 퍼지며 나타남
+    if (ie < 1) wake();
     VB.forEach((n) => {
       const [x, y, z] = rot(
-        n.x + a * Math.sin(t * 0.7 + n.ph),
-        n.y + a * Math.cos(t * 0.53 + n.ph * 1.3),
-        n.z + a * Math.sin(t * 0.61 + n.ph * 0.7),
+        cam.cx + (n.x - cam.cx + a * Math.sin(t * 0.7 + n.ph)) * SC,
+        cam.cy + (n.y - cam.cy + a * Math.cos(t * 0.53 + n.ph * 1.3)) * SC,
+        cam.cz + (n.z - cam.cz + a * Math.sin(t * 0.61 + n.ph * 0.7)) * SC,
       );
       const f = F / (F + Math.max(z, -F * 0.8));
       n.sx = W / 2 + cam.px + x * f * cam.k;
@@ -302,14 +323,19 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     const m = SP / 2;
     const R = SP * 0.44;
     g.fillStyle = hex;
+    g.globalAlpha = 0.28;
     g.beginPath();
     g.arc(m, m, R, 0, 6.283);
     g.fill();
-    g.lineWidth = SP * 0.03;
-    g.strokeStyle = shade(hex, -0.55).replace('rgb', 'rgba').replace(')', ',0.9)');
+    g.globalAlpha = 1;
+    g.lineWidth = SP * 0.06;
+    g.strokeStyle = hex;
     g.beginPath();
     g.arc(m, m, R - g.lineWidth / 2, 0, 6.283);
     g.stroke();
+    g.beginPath();
+    g.arc(m, m, R * 0.42, 0, 6.283);
+    g.fill();
     sprites.set(cat, c);
     return c;
   }
@@ -346,12 +372,26 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
         ctx.globalAlpha = (hs ? (on ? 0.95 : 0.03) : (l.k === 'r' ? 0.28 : l.level === 'C' ? 0.18 : 0.42)) * dimB * fog;
         ctx.strokeStyle = col;
         ctx.lineWidth = (l.level === 'A' ? 1.4 : l.level === 'B' ? 1 : 0.8) * (on ? 1.8 : 1) * Math.min(1.4, Math.max(0.6, k)) * Math.min(l.a.sf, l.b.sf);
+        if (l.k === 'c' && (on || !hs)) {
+          const gr = ctx.createLinearGradient(l.a.sx, l.a.sy, l.b.sx, l.b.sy);
+          gr.addColorStop(0, col + '55');
+          gr.addColorStop(1, col);
+          ctx.strokeStyle = gr;
+        }
         ctx.setLineDash(l.k === 'r' ? [2, 4] : l.level === 'D' ? [5, 4] : []);
         ctx.beginPath();
         ctx.moveTo(l.a.sx, l.a.sy);
         ctx.lineTo(l.b.sx, l.b.sy);
         ctx.stroke();
         ctx.setLineDash([]);
+        if (l.k === 'c' && on) {
+          const u = (performance.now() / 1100 + l.a.ph) % 1;
+          ctx.globalAlpha = 0.95;
+          ctx.fillStyle = '#e8ffff';
+          ctx.beginPath();
+          ctx.arc(l.a.sx + (l.b.sx - l.a.sx) * u, l.a.sy + (l.b.sy - l.a.sy) * u, 1.8 * Math.min(1.5, Math.max(0.8, k)), 0, 6.283);
+          ctx.fill();
+        }
         if (l.k === 'c' && (on || (!hs && k > 1.2))) arrow(l.a.sx, l.a.sy, l.b.sx, l.b.sy, l.b.rad * l.b.sf * zk * 1.5, col);
       });
 
@@ -370,6 +410,13 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
           ctx.arc(n.sx, n.sy, r + 3.5, 0, 6.283);
           ctx.stroke();
         }
+        if (!hs && r > 7) {
+          ctx.globalAlpha = 0.1 * n.fog;
+          ctx.fillStyle = CC[n.d.cat];
+          ctx.beginPath();
+          ctx.arc(n.sx, n.sy, r * 1.55, 0, 6.283);
+          ctx.fill();
+        }
         ctx.globalAlpha = hs ? (inH ? 1 : 0.06) : n.fog;
         const rr = hs && !inH ? r * 0.7 : r;
         if (rr < 2.6) {
@@ -384,16 +431,26 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
         }
         if (n.d.id === sel) {
           ctx.globalAlpha = 1;
-          ctx.strokeStyle = '#f2f2f2';
-          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = '#e8ffff';
+          ctx.lineWidth = 1.6;
           ctx.beginPath();
-          ctx.arc(n.sx, n.sy, r + 3, 0, 6.283);
+          ctx.arc(n.sx, n.sy, r + 4, 0, 6.283);
           ctx.stroke();
+          ctx.strokeStyle = '#5cf0ff';
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([6, 5]);
+          ctx.lineDashOffset = -performance.now() / 55;
+          ctx.beginPath();
+          ctx.arc(n.sx, n.sy, r + 9, 0, 6.283);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.lineDashOffset = 0;
+          wake();
         }
         const la = labAll ? 1 : hs ? (inH ? 1 : 0) : Math.max(0, Math.min(1, (k * n.sf * (0.55 + n.deg / 22) - 0.55) / 0.35));
         if (la > 0.02) lab.push([n, n.sx, n.sy + r + 12, la * (hs ? 1 : 0.8 + 0.2 * n.fog)]);
       });
-    ctx.font = '500 12px -apple-system,"Noto Sans KR",sans-serif';
+    ctx.font = '500 11px ui-monospace,Menlo,Consolas,"Noto Sans KR",monospace';
     ctx.textAlign = 'center';
     lab.sort((u, v) => Number(v[0].d.id === sel) - Number(u[0].d.id === sel) || ((u[0].sz - v[0].sz) * 0.02 + (v[0].deg - u[0].deg)));
     /** @type {number[][]} */
@@ -405,13 +462,31 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
       box.push(bb);
       ctx.globalAlpha = a;
       ctx.lineWidth = 2.5;
-      ctx.strokeStyle = 'rgba(24,24,24,.9)';
+      ctx.strokeStyle = 'rgba(4,7,13,.92)';
       ctx.lineJoin = 'round';
       ctx.strokeText(n.d.name, x, y);
-      ctx.fillStyle = n.d.id === sel ? '#fff' : '#cfd2d6';
+      ctx.fillStyle = n.d.id === sel ? '#e8ffff' : '#b4cce0';
       ctx.fillText(n.d.name, x, y);
     });
     ctx.globalAlpha = 1;
+    {
+      const cx = W / 2 + cam.px;
+      const cy = H / 2 + cam.py;
+      ctx.strokeStyle = 'rgba(92,240,255,.55)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 9, 0, 6.283);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        ctx.moveTo(cx + dx * 5, cy + dy * 5);
+        ctx.lineTo(cx + dx * 15, cy + dy * 15);
+      }
+      ctx.stroke();
+      const ro = typeof document !== 'undefined' ? document.getElementById('ro') : null;
+      if (ro) {
+        const deg = (v) => ((Math.round(v * 57.2958) % 360) + 360) % 360;
+        ro.textContent = `YAW ${String(deg(cam.yaw)).padStart(3, '0')}°\nPIT ${Math.round(cam.pitch * 57.2958)}°\nZOOM ×${cam.k.toFixed(2)}`;
+      }
+    }
   }
 
   /** @param {Partial<Cam>} t */
@@ -446,7 +521,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     c.forEach((v, i) => (c[i] = v / A.length));
     let R = 0;
     A.forEach((n) => (R = Math.max(R, Math.hypot(n.x - c[0], n.y - c[1], n.z - c[2]))));
-    const t = { cx: c[0], cy: c[1], cz: c[2], px: 0, py: 0, k: Math.min(W, H - 150) / (2 * R * 1.3 + 40) };
+    const t = { px: 0, py: 0, k: Math.min(W, H - 150) / (2 * R * 1.3 + 40) };
     if (anim) flyTo(t);
     else Object.assign(cam, t);
     wake();
@@ -474,7 +549,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     let R = 0;
     A.forEach((n) => (R = Math.max(R, Math.hypot(n.x - c[0], n.y - c[1], n.z - c[2]))));
     const k = Math.min(W, H - 150) / (2 * R * 1.3 + 40);
-    flyTo({ cx: c[0], cy: c[1], cz: c[2], px: 0, py: -H * 0.24, k: Math.max(0.15, Math.min(3, k)) });
+    flyTo(centerFor(c[0], c[1], c[2], Math.max(0.15, Math.min(3, k)), -H * 0.24));
   }
 
   /** @param {number} f @param {number} sx @param {number} sy */
@@ -624,7 +699,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
       spin = { y: 0, p: 0 };
       lastAct = performance.now();
       const n = bod(action.id);
-      flyTo({ cx: n.x, cy: n.y, cz: n.z, px: 0, py: -H * 0.24, k: Math.max(cam.k, 1.6) });
+      flyTo(centerFor(n.x, n.y, n.z, Math.max(cam.k, 1.6), -H * 0.24));
     } else if (action.type === 'deselect') {
       if (st.prefs.hideOrph) recompute();
     } else if (action.type === 'setTrace' && st.view.trace) {

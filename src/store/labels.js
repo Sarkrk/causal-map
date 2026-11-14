@@ -20,23 +20,23 @@ export const CN = {
 
 /** 범주 → 색 (원본 CC). */
 export const CC = {
-  Real_Economy: '#d4a55a',
-  Inflation_Labor: '#d7717d',
-  Policy: '#8dbb74',
-  Financial_Market: '#6f9fd6',
-  External_Sector: '#3fa7a0',
-  Industry_AI: '#d98ab0',
-  Labor_Demographics: '#dd8a5a',
-  Institutions: '#9aa6b5',
-  Environment: '#5eb98a',
-  Fiscal: '#cfc360',
-  Money_Credit: '#9cc3dc',
-  Trade_Global: '#4f86c6',
-  Other: '#868b94',
+  Real_Economy: '#ffc247',
+  Inflation_Labor: '#ff5a7e',
+  Policy: '#7dff8f',
+  Financial_Market: '#4da3ff',
+  External_Sector: '#27f0ff',
+  Industry_AI: '#ff6fd0',
+  Labor_Demographics: '#ff8a4d',
+  Institutions: '#a6b8cc',
+  Environment: '#35e0a1',
+  Fiscal: '#e8ff5c',
+  Money_Credit: '#8fd8ff',
+  Trade_Global: '#5b7cff',
+  Other: '#8a9bb0',
 };
 
 /** 등급 → 색 (원본 GC). */
-export const GC = { A: '#e5646a', B: '#6b9be8', C: '#7a7a7a', D: '#9a9a9a' };
+export const GC = { A: '#ff3d6e', B: '#3d9bff', C: '#5f7a94', D: '#93a8bd' };
 
 /** @type {string[]} 범주 키 전체 순서 */
 export const CATEGORY_ORDER = Object.keys(CN);
