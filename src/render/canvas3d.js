@@ -280,8 +280,6 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
   }
 
 
-  /** 범주별 구슬 스프라이트(그라디언트·테두리·하이라이트)를 한 번만 그려 두고 drawImage로 재사용한다. */
-  /** @type {Map<string, HTMLCanvasElement>} */
   const sprites = new Map();
   const SP = 192;
   /** @param {string} hex @param {number} f  f<0 어둡게, f>0 밝게 */
@@ -292,42 +290,26 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     );
     return `rgb(${ch[0]},${ch[1]},${ch[2]})`;
   }
+  /** 범주별 평평한 단색 원 스프라이트(얇은 어두운 테두리)를 한 번만 그려 두고 drawImage로 재사용한다. */
   /** @param {string} cat */
   function sprite(cat) {
     let c = sprites.get(cat);
     if (c) return c;
-    const hex = CC[/** @type {'Policy'} */ (cat)] || '#999999';
+    const hex = CC[/** @type {'Policy'} */ (cat)] || '#8a8f98';
     c = document.createElement('canvas');
     c.width = c.height = SP;
     const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
     const m = SP / 2;
     const R = SP * 0.44;
-    // 바깥 은은한 후광
-    const halo = g.createRadialGradient(m, m, R * 0.8, m, m, m);
-    halo.addColorStop(0, shade(hex, 0) .replace('rgb', 'rgba').replace(')', ',0.30)'));
-    halo.addColorStop(1, shade(hex, 0).replace('rgb', 'rgba').replace(')', ',0)'));
-    g.fillStyle = halo;
-    g.fillRect(0, 0, SP, SP);
-    // 본체: 좌상단 광원 구슬
-    const body = g.createRadialGradient(m - R * 0.35, m - R * 0.4, R * 0.1, m, m, R);
-    body.addColorStop(0, shade(hex, 0.55));
-    body.addColorStop(0.45, shade(hex, 0));
-    body.addColorStop(1, shade(hex, -0.45));
-    g.fillStyle = body;
+    g.fillStyle = hex;
     g.beginPath();
     g.arc(m, m, R, 0, 6.283);
     g.fill();
-    // 테두리(밝은 림)
-    g.lineWidth = SP * 0.035;
-    g.strokeStyle = shade(hex, 0.7).replace('rgb', 'rgba').replace(')', ',0.85)');
+    g.lineWidth = SP * 0.03;
+    g.strokeStyle = shade(hex, -0.55).replace('rgb', 'rgba').replace(')', ',0.9)');
     g.beginPath();
     g.arc(m, m, R - g.lineWidth / 2, 0, 6.283);
     g.stroke();
-    // 작은 반사광
-    g.fillStyle = 'rgba(255,255,255,0.55)';
-    g.beginPath();
-    g.ellipse(m - R * 0.32, m - R * 0.38, R * 0.22, R * 0.13, -0.6, 0, 6.283);
-    g.fill();
     sprites.set(cat, c);
     return c;
   }
@@ -361,16 +343,16 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
         const fog = Math.min(l.a.fog, l.b.fog);
         // B-는 같은 B색에서 알파만 낮춰 흐리게(B+와 구분). 등급 가중치·굵기는 그대로.
         const dimB = l.level === 'B' && l.sub === '-' ? 0.72 : 1;
-        ctx.globalAlpha = (hs ? (on ? 0.95 : 0.03) : (l.k === 'r' ? 0.35 : l.level === 'C' ? 0.25 : 0.6)) * dimB * fog;
+        ctx.globalAlpha = (hs ? (on ? 0.95 : 0.03) : (l.k === 'r' ? 0.28 : l.level === 'C' ? 0.18 : 0.42)) * dimB * fog;
         ctx.strokeStyle = col;
-        ctx.lineWidth = (l.level === 'A' ? 2 : l.level === 'B' ? 1.4 : 1) * (on ? 1.7 : 1) * Math.min(1.4, Math.max(0.6, k)) * Math.min(l.a.sf, l.b.sf);
+        ctx.lineWidth = (l.level === 'A' ? 1.4 : l.level === 'B' ? 1 : 0.8) * (on ? 1.8 : 1) * Math.min(1.4, Math.max(0.6, k)) * Math.min(l.a.sf, l.b.sf);
         ctx.setLineDash(l.k === 'r' ? [2, 4] : l.level === 'D' ? [5, 4] : []);
         ctx.beginPath();
         ctx.moveTo(l.a.sx, l.a.sy);
         ctx.lineTo(l.b.sx, l.b.sy);
         ctx.stroke();
         ctx.setLineDash([]);
-        if (l.k === 'c' && (on || (!hs && k > 1.2))) arrow(l.a.sx, l.a.sy, l.b.sx, l.b.sy, l.b.rad * l.b.sf * zk, col);
+        if (l.k === 'c' && (on || (!hs && k > 1.2))) arrow(l.a.sx, l.a.sy, l.b.sx, l.b.sy, l.b.rad * l.b.sf * zk * 1.5, col);
       });
 
     /** @type {[Body, number, number, number][]} */
@@ -378,39 +360,40 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     VB.slice()
       .sort((u, v) => ((hs ? Number(hs.has(u.d.id)) : 1) - (hs ? Number(hs.has(v.d.id)) : 1)) || (v.sz - u.sz))
       .forEach((n) => {
-        const r = n.rad * n.sf * zk;
+        const r = n.rad * n.sf * zk * 1.5; // 화면상 실제 반지름
         const inH = !hs || hs.has(n.d.id);
         if (hs && inH) {
-          ctx.globalAlpha = n.d.id === sel ? 0.35 : 0.2;
-          ctx.fillStyle = CC[n.d.cat];
+          ctx.globalAlpha = n.d.id === sel ? 0.5 : 0.3;
+          ctx.strokeStyle = CC[n.d.cat];
+          ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.arc(n.sx, n.sy, r * (n.d.id === sel ? 2.1 : 1.7) + 3, 0, 6.283);
-          ctx.fill();
+          ctx.arc(n.sx, n.sy, r + 3.5, 0, 6.283);
+          ctx.stroke();
         }
         ctx.globalAlpha = hs ? (inH ? 1 : 0.06) : n.fog;
         const rr = hs && !inH ? r * 0.7 : r;
-        if (rr < 3.2) {
+        if (rr < 2.6) {
           // 아주 작을 땐 스프라이트 대신 단색 점(번짐 방지)
           ctx.fillStyle = CC[n.d.cat];
           ctx.beginPath();
           ctx.arc(n.sx, n.sy, Math.max(rr, 1.1), 0, 6.283);
           ctx.fill();
         } else {
-          const d = (rr / 0.44) * 2; // 스프라이트의 본체 반지름이 44%
+          const d = rr / 0.44; // 스프라이트의 본체 반지름이 44%
           ctx.drawImage(sprite(n.d.cat), n.sx - d / 2, n.sy - d / 2, d, d);
         }
         if (n.d.id === sel) {
           ctx.globalAlpha = 1;
-          ctx.strokeStyle = '#fff';
-          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = '#f2f2f2';
+          ctx.lineWidth = 1.5;
           ctx.beginPath();
-          ctx.arc(n.sx, n.sy, r + 4, 0, 6.283);
+          ctx.arc(n.sx, n.sy, r + 3, 0, 6.283);
           ctx.stroke();
         }
         const la = labAll ? 1 : hs ? (inH ? 1 : 0) : Math.max(0, Math.min(1, (k * n.sf * (0.55 + n.deg / 22) - 0.55) / 0.35));
-        if (la > 0.02) lab.push([n, n.sx, n.sy + r + 12, la * (hs ? 1 : n.fog)]);
+        if (la > 0.02) lab.push([n, n.sx, n.sy + r + 12, la * (hs ? 1 : 0.55 + 0.45 * n.fog)]);
       });
-    ctx.font = '12px -apple-system,"Noto Sans KR",sans-serif';
+    ctx.font = '500 11px -apple-system,"Noto Sans KR",sans-serif';
     ctx.textAlign = 'center';
     lab.sort((u, v) => Number(v[0].d.id === sel) - Number(u[0].d.id === sel) || ((u[0].sz - v[0].sz) * 0.02 + (v[0].deg - u[0].deg)));
     /** @type {number[][]} */
@@ -421,10 +404,11 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
       if (n.d.id !== sel && box.some((o) => bb[0] < o[2] && bb[2] > o[0] && bb[1] < o[3] && bb[3] > o[1])) return;
       box.push(bb);
       ctx.globalAlpha = a;
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = '#1e1e1e';
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = 'rgba(24,24,24,.9)';
+      ctx.lineJoin = 'round';
       ctx.strokeText(n.d.name, x, y);
-      ctx.fillStyle = n.d.id === sel ? '#fff' : '#c9c9c9';
+      ctx.fillStyle = n.d.id === sel ? '#fff' : '#cfd2d6';
       ctx.fillText(n.d.name, x, y);
     });
     ctx.globalAlpha = 1;
