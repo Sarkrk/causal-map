@@ -100,6 +100,14 @@ input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:v
 input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#e8eaed;border:2px solid var(--bg)}
 #toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 70px);transform:translateX(-50%);background:#ececee;color:#1c1c1e;padding:var(--s2) var(--s4);border-radius:var(--pill);font-size:var(--f2);opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
 #toast.on{opacity:1}
+#fstat{border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:var(--s3);margin-bottom:var(--s2)}
+#fstat .frow{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);font-size:var(--f2);line-height:1.9}
+#fstat .frow .k{color:var(--mu)}
+#fstat .frow .v{font-family:ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;color:#e8eaed}
+#fstat .frow .v b{font-weight:600}
+#fstat .fbar{display:flex;gap:2px;height:6px;border-radius:3px;overflow:hidden;margin:var(--s2) 0 var(--s1)}
+#fstat .fbar i{display:block;height:100%}
+#fstat .fnote{font-size:var(--f1);color:var(--mu);line-height:1.5;margin-top:var(--s1)}
 </style></head><body>
 <canvas id="cv"></canvas><div id="hud"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></div><div id="ro"></div>
 <div id="top"><div id="sw"><input id="q" type="search" placeholder="노드 검색" autocomplete="off"><div id="sug"></div></div><button class="fab" id="fb" aria-label="보기 설정">☰<span id="fbadge"></span></button></div>
@@ -108,6 +116,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 <div id="stat" role="status">불러오는 중…</div>
 <div class="sheet" id="ns"><div class="hd" id="nsh"><i></i><h2 id="nt"></h2><div class="sub" id="nsub"></div><div id="nbtns"><button class="chip" id="nshare" type="button">링크</button><button class="chip" id="nclose" type="button" aria-label="닫기">✕</button></div></div><div class="bd" id="nb"></div></div>
 <div class="sheet" id="fs"><div class="hd" id="fsh"><i></i><h2>보기 설정<button class="chip" id="freset" type="button">초기화</button></h2></div><div class="bd" id="fbd">
+ <div class="sec">데이터 정보</div><div id="fstat"></div>
  <div class="sec">등급</div><div class="row" id="flv"></div>
  <div class="row" style="margin-top:8px"><button class="chip" id="tweak">B- 약한 연결 포함</button></div>
  <div class="sec">범주</div><div class="row" id="fcat"></div>

@@ -12,6 +12,7 @@ import { initSearch, revealNode } from './ui/search.js';
 import { initUpdate } from './ui/update.js';
 import { initPanel } from './ui/panel.js';
 import { initRoute, shareLink } from './ui/route.js';
+import { initDataInfo } from './ui/datainfo.js';
 
 /** @param {string} id */
 function byId(id) {
@@ -87,7 +88,8 @@ async function boot() {
   byId('zf').addEventListener('click', () => canvas.fit(true));
   byId('zc').addEventListener('click', () => canvas.recenter());
 
-  stat.textContent = '';
+  // 왼쪽 아래 상태줄: 데이터 규모를 항상 한 줄로 보여준다(시트를 열지 않아도 보이게).
+  stat.textContent = `노드 ${graph.nodes.length.toLocaleString('ko-KR')} · 관계선 ${graph.edges.length.toLocaleString('ko-KR')}`;
 
   initUpdate({
     meta: data.meta || {},
@@ -97,6 +99,9 @@ async function boot() {
     fetchFn: (url, init) => globalThis.fetch(url, init),
     reload: () => location.reload(),
   });
+
+  // 보기 설정 시트 맨 위의 '데이터 정보'(노드·관계선 개수, 등급 분포, 갱신일).
+  initDataInfo(document.getElementById('fstat'), { graph, meta: data.meta || {} });
 
   initPanel({
     graph,
