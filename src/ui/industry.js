@@ -45,7 +45,7 @@ export function initIndustry(opts) {
       byId('indbtn').textContent = '인과 지도';
       byId('indbtn').classList.add('on');
       opts.onMode(true);
-      scheduleLines();
+      startView();
     } else {
       on = false;
       document.body.classList.remove('ind-on');
@@ -69,47 +69,48 @@ export function initIndustry(opts) {
     const stages = [...g.stages].sort((a, b) => a.order - b.order);
     view.innerHTML = '';
 
-    // 머리말: 제목 + 쉬운 말 흐름 설명 + 단계 흐름 띠 + 거시 요인
-    const head = document.createElement('div');
-    head.id = 'indhead';
+    // 상단 바(떠 있는 오버레이): ← 인과 지도 / 제목 / ⓘ / 단계 칩(누르면 그 단계로 이동)
+    const top = document.createElement('div');
+    top.id = 'indtop';
+    const row1 = document.createElement('div');
+    row1.className = 'ind-row1';
+    const back = document.createElement('button');
+    back.className = 'ind-back';
+    back.textContent = '← 인과 지도';
+    back.setAttribute('aria-label', '인과 지도(기존 DB)로 돌아가기');
+    back.addEventListener('click', () => { if (on) toggle(); });
     const h1 = document.createElement('h1');
     h1.textContent = g.title;
+    const info = document.createElement('button');
+    info.className = 'ind-info';
+    info.textContent = 'ⓘ';
+    info.setAttribute('aria-label', '설명');
+    row1.append(back, h1, info);
     const intro = document.createElement('p');
     intro.className = 'ind-intro';
+    intro.hidden = true;
     intro.textContent = g.intro;
-    const fold = document.createElement('button');
-    fold.className = 'ind-fold';
-    const small = window.matchMedia('(max-width:640px)').matches;
-    if (small) intro.classList.add('folded');
-    fold.textContent = small ? '설명 펼치기 ▼' : '설명 접기 ▲';
-    fold.addEventListener('click', () => {
-      const f = intro.classList.toggle('folded');
-      fold.textContent = f ? '설명 펼치기 ▼' : '설명 접기 ▲';
-      scheduleLines();
-    });
-    head.append(h1, fold, intro);
-
+    info.addEventListener('click', () => { intro.hidden = !intro.hidden; });
     const strip = document.createElement('div');
     strip.className = 'ind-strip';
     stages.forEach((s, i) => {
       const chip = document.createElement('button');
       chip.className = 'ind-stagechip';
+      chip.dataset.stage = s.id;
       chip.style.setProperty('--sc', s.color);
-      chip.innerHTML = `<b>${s.order}. ${s.name}</b><span>${s.short}</span>`;
-      chip.addEventListener('click', () => openStage(s));
+      chip.innerHTML = `<b>${s.order}. ${s.name}</b>`;
+      chip.addEventListener('click', () => { focusStage(s.id); openStage(s); });
       strip.appendChild(chip);
       if (i < stages.length - 1) {
         const ar = document.createElement('i');
         ar.className = 'ind-arrow';
-        ar.textContent = '→';
+        ar.textContent = '›';
         strip.appendChild(ar);
       }
     });
-    head.appendChild(strip);
+    top.append(row1, intro, strip);
 
-    view.appendChild(head);
-
-    // 평면 맵: 단계 컬럼 + SVG 연결
+    // 평면 맵: 무한 캔버스(드래그 이동·핀치/휠 확대) + 단계 컬럼 + SVG 연결
     scroll = document.createElement('div');
     scroll.id = 'indscroll';
     const inner = document.createElement('div');
@@ -120,14 +121,17 @@ export function initIndustry(opts) {
     inner.appendChild(svg);
 
     cards.clear();
+    cols.clear();
     for (const s of stages) {
       const col = document.createElement('div');
       col.className = 'ind-col';
+      col.dataset.stage = s.id;
+      cols.set(s.id, col);
       col.style.setProperty('--sc', s.color);
       const ch = document.createElement('button');
       ch.className = 'ind-colhead';
       const comps = g.companies.filter((c) => c.stage === s.id);
-      ch.innerHTML = `<b>${s.name}</b><span>${s.short} · ${comps.length}개 기업</span>`;
+      ch.innerHTML = `<b>${s.order}. ${s.name}</b><span>${s.short} · ${comps.length}개 기업</span>`;
       ch.addEventListener('click', () => openStage(s));
       col.appendChild(ch);
 
@@ -145,7 +149,7 @@ export function initIndustry(opts) {
           card.className = 'ind-card';
           card.dataset.id = c.id;
           card.innerHTML = `<b>${c.kr}</b><span class="ind-tk">${c.name !== c.kr ? c.name + ' · ' : ''}${c.ticker || ''}</span><span class="ind-role">${c.role}</span>${c.verified ? '' : '<i class="ind-cand" title="출처 검증 전 후보">후보</i>'}`;
-          card.addEventListener('click', (e) => { e.stopPropagation(); select(c.id); });
+          card.addEventListener('click', (e) => { e.stopPropagation(); if (moved) return; select(c.id); });
           cards.set(c.id, card);
           col.appendChild(card);
         }
@@ -158,8 +162,26 @@ export function initIndustry(opts) {
       inner.appendChild(col);
     }
     scroll.appendChild(inner);
-    scroll.addEventListener('scroll', scheduleLines, { passive: true });
     view.appendChild(scroll);
+    view.appendChild(top);
+
+    // 확대·축소 버튼
+    const zb = document.createElement('div');
+    zb.id = 'indzoom';
+    for (const [t, lab, fn] of /** @type {[string,string,()=>void][]} */ ([
+      ['+', '확대', () => zoomBy(1.3)],
+      ['−', '축소', () => zoomBy(1 / 1.3)],
+      ['⤢', '전체 보기', () => fitAll(true)],
+    ])) {
+      const b = document.createElement('button');
+      b.className = 'ind-zb';
+      b.textContent = t;
+      b.setAttribute('aria-label', lab);
+      b.addEventListener('click', fn);
+      zb.appendChild(b);
+    }
+    view.appendChild(zb);
+    bindGestures();
 
     // 병목 띠
     const bn = document.createElement('div');
@@ -191,10 +213,182 @@ export function initIndustry(opts) {
     view.appendChild(panel);
 
     view.addEventListener('click', (e) => {
+      if (moved) return;
       if (e.target === view || e.target === scroll || e.target === inner) select(null);
     });
-    window.addEventListener('resize', scheduleLines);
+    if (!resizeBound) { resizeBound = true; window.addEventListener('resize', () => { if (on) { drawLines(); } }); }
     drawLines();
+    startView();
+  }
+
+  // ───── 카메라(이동·확대) ─────
+  const MINK = 0.16;
+  const MAXK = 2.6;
+  let tx = 0;
+  let ty = 0;
+  let k = 1;
+  let moved = false;
+  let resizeBound = false;
+  /** @type {Map<string,HTMLElement>} */
+  const cols = new Map();
+
+  function applyCam(/** @type {boolean} */ smooth) {
+    const inner = byId('indinner');
+    inner.style.transition = smooth ? 'transform .28s ease' : 'none';
+    inner.style.transform = `translate(${tx}px,${ty}px) scale(${k})`;
+    inner.classList.toggle('lod', k < 0.55);
+    inner.classList.toggle('lod2', k < 0.3);
+  }
+  function viewSize() {
+    const r = scroll ? scroll.getBoundingClientRect() : { width: innerWidth, height: innerHeight };
+    return { w: r.width, h: r.height };
+  }
+  /** 위 바에 가려지는 높이(맵을 이 아래에 배치) */
+  function topPad() {
+    const t = document.getElementById('indtop');
+    return t ? t.getBoundingClientRect().height + 6 : 90;
+  }
+  /** 패널·시트에 가려지는 영역을 뺀 보이는 영역 */
+  function freeRect() {
+    const { w, h } = viewSize();
+    const panelOpen = !byId('indpanel').hidden;
+    const small = w <= 700;
+    let left = 0;
+    let right = w;
+    let bottom = h;
+    if (panelOpen) { if (small) bottom = h * 0.58; else right = w - Math.min(400, w * 0.92); }
+    return { left, right, top: topPad(), bottom };
+  }
+  function clampCam() {
+    const inner = byId('indinner');
+    const W = inner.offsetWidth * k;
+    const H = inner.offsetHeight * k;
+    const { w, h } = viewSize();
+    const m = 80;
+    tx = Math.min(w - m, Math.max(m - W, tx));
+    ty = Math.min(h - m, Math.max(m - H, ty));
+  }
+  function zoomAt(/** @type {number} */ nk, /** @type {number} */ cx, /** @type {number} */ cy) {
+    nk = Math.min(MAXK, Math.max(MINK, nk));
+    const f = nk / k;
+    tx = cx - (cx - tx) * f;
+    ty = cy - (cy - ty) * f;
+    k = nk;
+    clampCam();
+    applyCam(false);
+  }
+  function zoomBy(/** @type {number} */ f) {
+    const fr = freeRect();
+    const cx = (fr.left + fr.right) / 2;
+    const cy = (fr.top + fr.bottom) / 2;
+    const nk = Math.min(MAXK, Math.max(MINK, k * f));
+    const g2 = nk / k;
+    tx = cx - (cx - tx) * g2;
+    ty = cy - (cy - ty) * g2;
+    k = nk;
+    clampCam();
+    applyCam(true);
+  }
+  /** 전체가 한눈에 들어오게(가로 기준, 너무 작으면 최소 배율) */
+  function fitAll(/** @type {boolean} */ smooth) {
+    const inner = byId('indinner');
+    const { w, h } = viewSize();
+    const W = inner.offsetWidth;
+    const H = inner.offsetHeight;
+    const fr = freeRect();
+    k = Math.min(MAXK, Math.max(MINK, Math.min((w - 24) / W, (h - fr.top - 70) / H)));
+    tx = (w - W * k) / 2;
+    ty = fr.top;
+    applyCam(smooth);
+    drawLines();
+  }
+  /** 처음 열 때: 1단계 왼쪽 위에서 읽기 좋은 크기로(전체 보기는 ⤢) */
+  function startView() {
+    const { w } = viewSize();
+    const fr = freeRect();
+    k = Math.min(0.8, Math.max(MINK, (w - 24) / 520));
+    tx = 12 - 20 * k;
+    ty = fr.top;
+    clampCam();
+    applyCam(false);
+    drawLines();
+  }
+  function focusStage(/** @type {string} */ sid) {
+    const col = cols.get(sid);
+    if (!col) return;
+    const { w } = viewSize();
+    const fr = freeRect();
+    k = Math.min(1.1, Math.max(0.6, (w - 24) / (col.offsetWidth + 40)));
+    tx = w / 2 - (col.offsetLeft + col.offsetWidth / 2) * k;
+    ty = fr.top - col.offsetTop * k;
+    clampCam();
+    applyCam(true);
+  }
+  function centerOn(/** @type {string} */ id) {
+    const card = cards.get(id);
+    if (!card) return;
+    const col = card.offsetParent instanceof HTMLElement ? card.offsetParent : null;
+    const cx = (col ? col.offsetLeft : 0) + card.offsetLeft + card.offsetWidth / 2;
+    const cy = (col ? col.offsetTop : 0) + card.offsetTop + card.offsetHeight / 2;
+    const fr = freeRect();
+    k = Math.min(1.2, Math.max(0.75, k));
+    tx = (fr.left + fr.right) / 2 - cx * k;
+    ty = (fr.top + fr.bottom) / 2 - cy * k;
+    clampCam();
+    applyCam(true);
+  }
+  let gestureBound = false;
+  function bindGestures() {
+    if (!scroll) return;
+    const el = scroll;
+    /** @type {Map<number,{x:number,y:number}>} */
+    const ptrs = new Map();
+    let lastDist = 0;
+    let startX = 0;
+    let startY = 0;
+    el.addEventListener('pointerdown', (e) => {
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (ptrs.size === 1) { startX = e.clientX; startY = e.clientY; moved = false; }
+      if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; lastDist = Math.hypot(a.x - b.x, a.y - b.y); moved = true; }
+    });
+    const move = (/** @type {PointerEvent} */ e) => {
+      const p = ptrs.get(e.pointerId);
+      if (!p) return;
+      const dx = e.clientX - p.x;
+      const dy = e.clientY - p.y;
+      p.x = e.clientX;
+      p.y = e.clientY;
+      if (ptrs.size === 1) {
+        if (!moved && Math.hypot(e.clientX - startX, e.clientY - startY) < 6) return;
+        moved = true;
+        tx += dx;
+        ty += dy;
+        clampCam();
+        applyCam(false);
+      } else if (ptrs.size === 2) {
+        const [a, b] = [...ptrs.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        const r = el.getBoundingClientRect();
+        if (lastDist > 0) zoomAt(k * (d / lastDist), (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top);
+        lastDist = d;
+      }
+    };
+    const up = (/** @type {PointerEvent} */ e) => {
+      ptrs.delete(e.pointerId);
+      if (ptrs.size < 2) lastDist = 0;
+      if (ptrs.size === 0) setTimeout(() => { moved = false; }, 0);
+    };
+    if (!gestureBound) {
+      gestureBound = true;
+      window.addEventListener('pointermove', (e) => { if (on) move(e); });
+      window.addEventListener('pointerup', (e) => { if (on) up(e); });
+      window.addEventListener('pointercancel', (e) => { if (on) up(e); });
+    }
+    el.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      zoomAt(k * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0016)), e.clientX - r.left, e.clientY - r.top);
+    }, { passive: false });
   }
 
   /** 카드 선택 → 이웃 강조 + 패널 */
@@ -237,15 +431,6 @@ export function initIndustry(opts) {
     }
     const panel = byId('indpanel');
     byId('indview').classList.toggle('has-sel', !!id);
-    if (id && scroll) {
-      // 선택 카드를 지도 영역 위쪽·왼쪽에 맞춘다(아래 시트에 가리지 않게). 바깥 컨테이너는 건드리지 않음.
-      const card = cards.get(id);
-      if (card) {
-        const cr = card.getBoundingClientRect();
-        const sr = scroll.getBoundingClientRect();
-        scroll.scrollTo({ top: Math.max(0, scroll.scrollTop + (cr.top - sr.top) - 12), left: Math.max(0, scroll.scrollLeft + (cr.left - sr.left) - 12), behavior: 'smooth' });
-      }
-    }
     if (!id) { panel.hidden = true; drawLines(); return; }
     const c = g.companies.find((x) => x.id === id);
     if (!c) return;
@@ -299,7 +484,7 @@ export function initIndustry(opts) {
         const b = document.createElement('button');
         b.className = 'ind-tag ind-link';
         b.textContent = (dir === 'up' ? '← ' : '→ ') + x.kr;
-        b.addEventListener('click', () => { select(x.id); const el = cards.get(x.id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); });
+        b.addEventListener('click', () => { select(x.id); });
         row.appendChild(b);
       }
       sec.appendChild(row);
@@ -362,6 +547,7 @@ export function initIndustry(opts) {
     }
     panel.appendChild(bd);
     drawLines();
+    centerOn(id);
   }
 
   /** 단계 상세 패널 */
@@ -425,20 +611,20 @@ export function initIndustry(opts) {
   function drawLines() {
     if (!svg || !scroll || !data) return;
     const inner = byId('indinner');
-    const W = inner.scrollWidth;
-    const H = inner.scrollHeight;
+    const W = inner.offsetWidth;
+    const H = inner.offsetHeight;
     svg.setAttribute('width', String(W));
     svg.setAttribute('height', String(H));
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    // 기존 선 제거(defs 보존)
     for (const el of [...svg.querySelectorAll('.ind-line')]) el.remove();
-    const base = inner.getBoundingClientRect();
-    /** @param {string} id */
+    /** 변환(확대·이동)과 무관한 레이아웃 좌표 @param {string} id */
     const pos = (id) => {
       const el = cards.get(id);
       if (!el) return null;
-      const r = el.getBoundingClientRect();
-      return { l: r.left - base.left, r: r.right - base.left, t: r.top - base.top, b: r.bottom - base.top, cy: r.top - base.top + r.height / 2 };
+      const col = el.offsetParent instanceof HTMLElement ? el.offsetParent : null;
+      const l = (col ? col.offsetLeft : 0) + el.offsetLeft;
+      const t = (col ? col.offsetTop : 0) + el.offsetTop;
+      return { l, r: l + el.offsetWidth, t, b: t + el.offsetHeight, cy: t + el.offsetHeight / 2 };
     };
     const stColor = (/** @type {string} */ cid) => {
       const c = data.companies.find((x) => x.id === cid);
