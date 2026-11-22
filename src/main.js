@@ -93,7 +93,7 @@ async function boot() {
 
   // 산업 지도(반도체 밸류체인) 토글 — 11/23
   // 옛 HTML 캐시 + 새 JS 혼합 시 요소가 없을 수 있다 → 앱 전체가 죽지 않게 방어(11/23)
-  const indBtn = byId('indbtn');
+  const indBtn = document.getElementById('indbtn');
   if (indBtn && document.getElementById('indview')) {
     const industry = initIndustry({
       revealNode: (name) => {
