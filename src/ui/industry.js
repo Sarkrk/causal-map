@@ -127,6 +127,7 @@ export function initIndustry(opts) {
       col.className = 'ind-col';
       col.dataset.stage = s.id;
       cols.set(s.id, col);
+      { const gp = GRID[s.id]; if (gp) { col.style.gridColumn = String(gp[0]); col.style.gridRow = String(gp[1]) + (gp[2] ? ' / span ' + gp[2] : ''); } }
       col.style.setProperty('--sc', s.color);
       const ch = document.createElement('button');
       ch.className = 'ind-colhead';
@@ -222,6 +223,14 @@ export function initIndustry(opts) {
   }
 
   // ───── 카메라(이동·확대) ─────
+  /** 단계 배치(열,행[,행 span]): 일렬이 아니라 갈래별로 위아래로 쌓는다 */
+  const GRID = {
+    mat: [1, 1], part: [2, 1], equip: [3, 1],
+    fab: [4, 1], memory: [4, 2],
+    package: [5, 1, 2], design: [5, 3],
+    fabless: [6, 1], system: [7, 1], cloud: [8, 1], aisw: [9, 1],
+  };
+
   const MINK = 0.16;
   const MAXK = 2.6;
   let tx = 0;
@@ -319,6 +328,7 @@ export function initIndustry(opts) {
     const { w } = viewSize();
     const fr = freeRect();
     k = Math.min(1.1, Math.max(0.6, (w - 24) / (col.offsetWidth + 40)));
+    applyCam(false);
     tx = w / 2 - (col.offsetLeft + col.offsetWidth / 2) * k;
     ty = fr.top - col.offsetTop * k;
     clampCam();
@@ -327,6 +337,9 @@ export function initIndustry(opts) {
   function centerOn(/** @type {string} */ id) {
     const card = cards.get(id);
     if (!card) return;
+    // 배율(→ 글자 생략 단계)을 먼저 확정해야 카드 위치가 맞다
+    k = Math.min(1.2, Math.max(0.75, k));
+    applyCam(false);
     const col = card.offsetParent instanceof HTMLElement ? card.offsetParent : null;
     const cx = (col ? col.offsetLeft : 0) + card.offsetLeft + card.offsetWidth / 2;
     const cy = (col ? col.offsetTop : 0) + card.offsetTop + card.offsetHeight / 2;
@@ -546,8 +559,8 @@ export function initIndustry(opts) {
       bd.appendChild(w);
     }
     panel.appendChild(bd);
-    drawLines();
     centerOn(id);
+    drawLines();
   }
 
   /** 단계 상세 패널 */
@@ -658,21 +671,18 @@ export function initIndustry(opts) {
       for (const tid of st.flows_to) {
         const A = heads.get(st.id);
         const B = heads.get(tid);
-        if (!A || !B || (orderOf.get(tid) || 0) <= st.order) continue;
-        const adj = (orderOf.get(tid) || 0) - st.order === 1;
-        const lift = adj ? 0 : 26 + ((orderOf.get(tid) || 0) - st.order) * 8;
+        if (!A || !B || B.l < A.r - 4) continue;
         const x1 = A.r;
         const x2 = B.l;
-        const y = A.y;
+        const dx = Math.max(30, (x2 - x1) / 2);
         const path = document.createElementNS(NS0, 'path');
         path.setAttribute('class', 'ind-line ind-flow');
-        path.setAttribute('d', adj ? `M${x1},${y} L${x2},${B.y}` : `M${x1},${y} C${x1 + 30},${y - lift * 1.6} ${x2 - 30},${B.y - lift * 1.6} ${x2},${B.y}`);
+        path.setAttribute('d', `M${x1},${A.y} C${x1 + dx},${A.y} ${x2 - dx},${B.y} ${x2},${B.y}`);
         path.setAttribute('fill', 'none');
         path.setAttribute('stroke', st.color);
-        path.setAttribute('stroke-width', '4');
+        path.setAttribute('stroke-width', '5');
         path.setAttribute('stroke-linecap', 'round');
-        path.setAttribute('stroke-dasharray', adj ? '' : '10 7');
-        path.setAttribute('opacity', sel ? '0.12' : '0.85');
+        path.setAttribute('opacity', sel ? '0.12' : '0.9');
         path.setAttribute('marker-end', 'url(#indah)');
         svg.appendChild(path);
       }

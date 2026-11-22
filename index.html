@@ -112,7 +112,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 body.ind-on #cv,body.ind-on #hud,body.ind-on #ro,body.ind-on #zoombox,body.ind-on #zc,body.ind-on #stat,body.ind-on #sw,body.ind-on #fb,body.ind-on #ns,body.ind-on #fs{display:none}
 #indview{position:fixed;inset:0;z-index:6;display:flex;flex-direction:column;background:radial-gradient(ellipse at 50% 42%,#17181c 0%,#0e0f12 55%,#070708 100%);overflow:hidden}
 #indview[hidden],#indpanel[hidden]{display:none!important}
-.ind-col{position:relative;z-index:1;width:240px;flex:none;display:flex;flex-direction:column;gap:6px}
+.ind-col{position:relative;z-index:1;width:240px;display:flex;flex-direction:column;gap:6px}
 .ind-colhead{text-align:left;border:1px solid var(--sc,#8a9bb0);border-top-width:4px;background:linear-gradient(180deg,color-mix(in srgb,var(--sc,#8a9bb0) 22%,#14151a),#14151a);border-radius:var(--r);padding:10px;color:var(--tx);cursor:pointer}
 .ind-colhead b{display:block;font-size:17px;color:#fff}
 .ind-colhead span{display:block;color:#b4b7be;font-size:12px;margin-top:3px;line-height:1.4}
@@ -141,7 +141,7 @@ body.ind-on #cv,body.ind-on #hud,body.ind-on #ro,body.ind-on #zoombox,body.ind-o
 .ind-bn span{display:block;color:var(--mu);font-size:var(--f1);line-height:1.5;margin-top:3px}
 #indscroll{position:absolute;inset:0;overflow:hidden;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
 #indscroll:active{cursor:grabbing}
-#indinner{position:absolute;left:0;top:0;transform-origin:0 0;display:flex;gap:64px;align-items:flex-start;width:max-content;padding:64px 40px 60px;will-change:transform}
+#indinner{position:absolute;left:0;top:0;transform-origin:0 0;display:grid;grid-auto-flow:row;column-gap:72px;row-gap:28px;align-items:start;width:max-content;padding:64px 40px 60px;will-change:transform}
 #indsvg{position:absolute;left:0;top:0;pointer-events:none;z-index:0;overflow:visible}
 #indtop{position:absolute;left:0;right:0;top:0;z-index:5;padding:calc(env(safe-area-inset-top) + 8px) var(--s3) var(--s2);background:linear-gradient(180deg,rgba(10,11,13,.96) 70%,rgba(10,11,13,0));pointer-events:none}
 #indtop>*{pointer-events:auto}
