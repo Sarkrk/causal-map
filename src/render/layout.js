@@ -26,6 +26,7 @@ import { nodeRng, nextSeed } from './rng.js';
  * @property {'c'|'r'} k
  * @property {PhysBody} a
  * @property {PhysBody} b
+ * @property {number} [str]  스프링 세기 재정의(없으면 k별 기본값). 섹터 간 교차 엣지는 약하게 준다.
  */
 
 /** @typedef {Record<string, number[]>} Centers 범주 → [x,y,z] 기준 위치 */
@@ -252,12 +253,15 @@ export function accumulateRepulsion(A, al, method = 'auto') {
 
 /**
  * 물리 계산기를 만든다. 시드에서 초기 위치를 정하고(노드 id별 난수), tick()마다 한 단계 진행한다.
- * @param {{bodies: PhysBody[], links?: PhysLink[], centers?: Centers, seed?: number, restore?: SavedPos|null, alpha?: number}} o
+ * @param {{bodies: PhysBody[], links?: PhysLink[], centers?: Centers, seed?: number, restore?: SavedPos|null, alpha?: number, centerPull?: number, centerDrift?: number}} o
  *   restore: 있으면 그 좌표를 먼저 쓰고, 없는 노드만 시드 좌표를 쓴다.
+ *   centerPull/centerDrift: 구심점 인력·전역 중심 인력 계수(기본 0.004/0.0015). 섹터 클러스터 뷰에서는 더 큰 값을 쓴다.
  */
 export function createLayout(o) {
   const bodies = o.bodies;
   const centers = o.centers ?? {};
+  const centerPull = o.centerPull ?? 0.004;
+  const centerDrift = o.centerDrift ?? 0.0015;
   let curSeed = (o.seed ?? DEFAULT_SEED) >>> 0;
   let al = o.alpha ?? 1;
   /** @type {PhysBody[]} */
@@ -313,7 +317,7 @@ export function createLayout(o) {
       const dz = l.b.z - l.a.z;
       const d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
       const len = l.k === 'r' ? 120 : 85;
-      const f = ((d - len) / d) * (l.k === 'r' ? 0.006 : 0.02) * al;
+      const f = ((d - len) / d) * (l.str ?? (l.k === 'r' ? 0.006 : 0.02)) * al;
       l.a.vx += dx * f;
       l.a.vy += dy * f;
       l.a.vz += dz * f;
@@ -323,9 +327,9 @@ export function createLayout(o) {
     }
     for (const n of A) {
       const c = center(n.cat);
-      n.vx += ((c[0] - n.x) * 0.004 - n.x * 0.0015) * al;
-      n.vy += ((c[1] - n.y) * 0.004 - n.y * 0.0015) * al;
-      n.vz += ((c[2] - n.z) * 0.004 - n.z * 0.0015) * al;
+      n.vx += ((c[0] - n.x) * centerPull - n.x * centerDrift) * al;
+      n.vy += ((c[1] - n.y) * centerPull - n.y * centerDrift) * al;
+      n.vz += ((c[2] - n.z) * centerPull - n.z * centerDrift) * al;
       if (n.fx != null && n.fy != null && n.fz != null) {
         n.x = n.fx;
         n.y = n.fy;

@@ -1,7 +1,7 @@
 // @ts-check
 // 3D 힘그래프 렌더러. 원본 app.js의 물리·투영·안개·라벨·화살표·포인터 제스처를 옮긴 것.
 // 물리 필드는 데이터 객체가 아니라 이 파일의 Body(Map<id, Body>)에 둔다.
-import { CC, GC, categoriesPresent } from '../store/labels.js';
+import { GC, SECC, SN, sectorsPresent } from '../store/labels.js';
 import { visible, emphasis } from '../store/select.js';
 import {
   createLayout,
@@ -54,6 +54,7 @@ import {
  * @property {string} level  인과: 'A'..'D', 상관: ''
  * @property {'+'|'-'|null} [sub]  인과: B 등급 세분(B+/B-), 그 밖은 없음
  * @property {number|null} r
+ * @property {number} [str]  스프링 세기 재정의(섹터 간 교차 엣지는 약하게).
  */
 
 /**
@@ -125,21 +126,29 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
   let H = 0;
   let DPR = 1;
 
-  const cats = categoriesPresent(graph);
+  // 섹터 구심점(11/23): 카테고리 대신 섹터 허브를 배치 앵커로 쓴다.
+  const sectors = sectorsPresent(graph);
   /** @type {Record<string, number[]>} */
   const CP = {};
-  cats.forEach((k, i) => {
-    const y = 1 - ((i + 0.5) / cats.length) * 2;
+  sectors.forEach((k, i) => {
+    const y = 1 - ((i + 0.5) / sectors.length) * 2;
     const r = Math.sqrt(1 - y * y);
     const a = i * 2.399;
-    CP[k] = [Math.cos(a) * r * 170, y * 170, Math.sin(a) * r * 170];
+    CP[k] = [Math.cos(a) * r * 260, y * 225, Math.sin(a) * r * 260];
   });
+  // 섹터별 소속 노드 수(허브 크기용).
+  /** @type {Record<string, number>} */
+  const sectorCount = {};
+  for (const d of graph.nodes) {
+    const sk = d.sector || 'other';
+    sectorCount[sk] = (sectorCount[sk] || 0) + 1;
+  }
 
   /** @type {Body[]} */
   const bodies = graph.nodes.map((d, i) => {
     const deg = graph.deg.get(d.id) ?? 0;
     return {
-      d, id: d.id, cat: d.cat, deg, rad: 3.5 + Math.sqrt(deg) * 1.9, ph: i * 2.399,
+      d, id: d.id, cat: d.sector || 'other', deg, rad: 3.5 + Math.sqrt(deg) * 1.9, ph: i * 2.399,
       x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, fx: null, fy: null, fz: null,
       sx: 0, sy: 0, sf: 1, sz: 0, fog: 1,
     };
@@ -168,6 +177,8 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     seed: saved ? saved.seed : DEFAULT_SEED,
     restore: saved ? saved.pos : null,
     alpha: saved ? RESTORE_ALPHA : 1,
+    centerPull: 0.012,   // 섹터 구심점 응집 강화(11/23)
+    centerDrift: 0.0004, // 전역 중심 쏠림 완화 → 클러스터 분리
   });
   /** 배치 좌표가 바뀌었고 아직 저장 전. alpha가 SETTLE_ALPHA 아래로 내려간 직후 1회 저장한다. */
   let saveDue = true;
@@ -181,6 +192,8 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
 
   /** 현재 가시 집합. recompute()가 갱신한다. */
   let vis = visible(graph, store.get());
+  /** 섹터 허브의 화면 투영(draw가 갱신, hubHit이 읽는다). lx·ly·lw는 라벨 상자. @type {{k:string,sx:number,sy:number,sf:number,sz:number,fog:number,r:number,lx:number,ly:number,lw:number}[]} */
+  let hubP = [];
   /** @type {Body[]} */
   let VB = [];
   /** @type {Set<Body>} */
@@ -194,7 +207,11 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     VB = bodies.filter((b) => vis.nodes.has(b.d.id));
     VS = new Set(VB);
     VL = vis.causal
-      .map((e) => /** @type {Link} */ ({ k: 'c', id: e.id, a: bod(e.src), b: bod(e.dst), level: e.level, sub: e.sub, r: e.r }))
+      .map((e) => {
+        const a = bod(e.src), b = bod(e.dst);
+        const cross = (a.d.sector || 'other') !== (b.d.sector || 'other');
+        return /** @type {Link} */ ({ k: 'c', id: e.id, a, b, level: e.level, sub: e.sub, r: e.r, str: cross ? 0.003 : 0.02 });
+      })
       .concat(vis.cors.map((c) => /** @type {Link} */ ({ k: 'r', id: '', a: bod(c.src), b: bod(c.dst), level: '', r: c.r })));
     layout.setActive(VB, VL);
   }
@@ -311,12 +328,12 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     );
     return `rgb(${ch[0]},${ch[1]},${ch[2]})`;
   }
-  /** 범주별 평평한 단색 원 스프라이트(얇은 어두운 테두리)를 한 번만 그려 두고 drawImage로 재사용한다. */
-  /** @param {string} cat */
-  function sprite(cat) {
-    let c = sprites.get(cat);
+  /** 섹터별 평평한 단색 원 스프라이트(얇은 어두운 테두리)를 한 번만 그려 두고 drawImage로 재사용한다. */
+  /** @param {string} sec */
+  function sprite(sec) {
+    let c = sprites.get(sec);
     if (c) return c;
-    const hex = CC[/** @type {'Policy'} */ (cat)] || '#8a8f98';
+    const hex = SECC[/** @type {'other'} */ (sec)] || '#8a8f98';
     c = document.createElement('canvas');
     c.width = c.height = SP;
     const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
@@ -336,14 +353,35 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     g.beginPath();
     g.arc(m, m, R * 0.42, 0, 6.283);
     g.fill();
-    sprites.set(cat, c);
+    sprites.set(sec, c);
     return c;
   }
+  /** 노드 색은 섹터 색(11/23 구심점 구조). @param {Body} n */
+  const ncol = (n) => SECC[/** @type {'other'} */ (n.d.sector || 'other')] || '#8a9bb0';
 
   function draw() {
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.clearRect(0, 0, W, H);
     project();
+    // 섹터 허브 투영(구심점 앵커, wobble 없음). lx·ly·lw는 라벨 클릭 판정용 상자.
+    ctx.font = '700 12px ui-monospace,Menlo,Consolas,"Noto Sans KR",monospace';
+    hubP = sectors.map((sk) => {
+      const c = CP[sk];
+      const [x, y, z] = rot(c[0], c[1], c[2]);
+      const f = F / (F + Math.max(z, -F * 0.8));
+      const sx = W / 2 + cam.px + x * f * cam.k;
+      const sy = H / 2 + cam.py + y * f * cam.k;
+      const r = (10 + Math.sqrt(sectorCount[sk] || 1) * 2.1) * f * cam.k;
+      const txt = `${SN[/** @type {'other'} */ (sk)] || sk} ${sectorCount[sk] || 0}`;
+      return {
+        k: sk, sx, sy,
+        sf: f, sz: z,
+        fog: Math.max(0.28, Math.min(1, 1 - z / 480)),
+        r,
+        lx: sx, ly: sy - Math.max(r * 0.62, 1) - 8,
+        lw: ctx.measureText(txt).width / 2 + 5,
+      };
+    });
     const st = store.get();
     const sel = st.view.selected;
     const hop = st.view.hop;
@@ -395,6 +433,61 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
         if (l.k === 'c' && (on || (!hs && k > 1.2))) arrow(l.a.sx, l.a.sy, l.b.sx, l.b.sy, l.b.rad * l.b.sf * zk * 1.5, col);
       });
 
+    // 섹터 간 상호작용: 보이는 교차 엣지를 허브 사이 굵은 선으로 집계(개별 엣지 위에 그려 눈에 띄게).
+    {
+      /** @type {Map<string, number>} */
+      const agg = new Map();
+      for (const l of VL) {
+        if (l.k !== 'c' || l.a.cat === l.b.cat) continue;
+        const key = l.a.cat < l.b.cat ? l.a.cat + '|' + l.b.cat : l.b.cat + '|' + l.a.cat;
+        agg.set(key, (agg.get(key) || 0) + 1);
+      }
+      const hp = new Map(hubP.map((h) => [h.k, h]));
+      const fsec = st.filters.sectors;
+      const zk = Math.min(1.5, Math.max(0.6, k));
+      for (const [key, cnt] of agg) {
+        const [ka, kb] = key.split('|');
+        const a = hp.get(ka), b = hp.get(kb);
+        if (!a || !b) continue;
+        const dim = fsec.includes(ka) && fsec.includes(kb) ? 1 : 0.2;
+        const fog = Math.min(a.fog, b.fog);
+        const w = (1.6 + Math.sqrt(cnt) * 1.1) * zk;
+        ctx.strokeStyle = '#c8d6e8';
+        ctx.globalAlpha = Math.min(0.22, 0.06 + cnt * 0.002) * fog * dim;
+        ctx.lineWidth = w * 2.6;
+        ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
+        ctx.globalAlpha = Math.min(0.6, 0.2 + Math.sqrt(cnt) * 0.045) * fog * dim;
+        ctx.lineWidth = w;
+        ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // 섹터 허브 본체(깊은 것부터): 은은한 글로우 + 테두리 원. 집계 연결선은 노드 엣지 위에 따로 그린다.
+    {
+      const fsec = st.filters.sectors;
+      hubP.slice().sort((u, v) => v.sz - u.sz).forEach((h) => {
+        const on = fsec.includes(h.k);
+        const col = SECC[/** @type {'other'} */ (h.k)] || '#8a9bb0';
+        const rr = Math.max(h.r, 1);
+        ctx.globalAlpha = (on ? 0.4 : 0.1) * h.fog;
+        const gr = ctx.createRadialGradient(h.sx, h.sy, 0, h.sx, h.sy, rr);
+        gr.addColorStop(0, col);
+        gr.addColorStop(1, col + '00');
+        ctx.fillStyle = gr;
+        ctx.beginPath();
+        ctx.arc(h.sx, h.sy, rr, 0, 6.283);
+        ctx.fill();
+        ctx.globalAlpha = (on ? 0.85 : 0.2) * h.fog;
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.arc(h.sx, h.sy, Math.max(rr * 0.62, 1), 0, 6.283);
+        ctx.stroke();
+      });
+      ctx.globalAlpha = 1;
+    }
+
     /** @type {[Body, number, number, number][]} */
     const lab = [];
     VB.slice()
@@ -404,7 +497,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
         const inH = !hs || hs.has(n.d.id);
         if (hs && inH) {
           ctx.globalAlpha = n.d.id === sel ? 0.5 : 0.3;
-          ctx.strokeStyle = CC[n.d.cat];
+          ctx.strokeStyle = ncol(n);
           ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.arc(n.sx, n.sy, r + 3.5, 0, 6.283);
@@ -412,7 +505,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
         }
         if (!hs && r > 7) {
           ctx.globalAlpha = 0.1 * n.fog;
-          ctx.fillStyle = CC[n.d.cat];
+          ctx.fillStyle = ncol(n);
           ctx.beginPath();
           ctx.arc(n.sx, n.sy, r * 1.55, 0, 6.283);
           ctx.fill();
@@ -421,13 +514,13 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
         const rr = hs && !inH ? r * 0.7 : r;
         if (rr < 2.6) {
           // 아주 작을 땐 스프라이트 대신 단색 점(번짐 방지)
-          ctx.fillStyle = CC[n.d.cat];
+          ctx.fillStyle = ncol(n);
           ctx.beginPath();
           ctx.arc(n.sx, n.sy, Math.max(rr, 1.1), 0, 6.283);
           ctx.fill();
         } else {
           const d = rr / 0.44; // 스프라이트의 본체 반지름이 44%
-          ctx.drawImage(sprite(n.d.cat), n.sx - d / 2, n.sy - d / 2, d, d);
+          ctx.drawImage(sprite(n.d.sector || 'other'), n.sx - d / 2, n.sy - d / 2, d, d);
         }
         if (n.d.id === sel) {
           ctx.globalAlpha = 1;
@@ -467,6 +560,24 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
       ctx.strokeText(n.d.name, x, y);
       ctx.fillStyle = n.d.id === sel ? '#ffffff' : '#cfd2d6';
       ctx.fillText(n.d.name, x, y);
+    });
+    // 허브 라벨: 섹터 이름 + 소속 노드 수. 가까운 것 우선, 겹치면 뒤 것은 생략.
+    ctx.font = '700 12px ui-monospace,Menlo,Consolas,"Noto Sans KR",monospace';
+    hubP.slice().sort((u, v) => u.sz - v.sz).forEach((h) => {
+      const on = st.filters.sectors.includes(h.k);
+      const txt = `${SN[/** @type {'other'} */ (h.k)] || h.k} ${sectorCount[h.k] || 0}`;
+      const y = h.sy - Math.max(h.r * 0.62, 1) - 8;
+      const w = ctx.measureText(txt).width / 2 + 4;
+      const bb = [h.sx - w, y - 13, h.sx + w, y + 3];
+      if (box.some((o) => bb[0] < o[2] && bb[2] > o[0] && bb[1] < o[3] && bb[3] > o[1])) return;
+      box.push(bb);
+      ctx.globalAlpha = (on ? 0.95 : 0.3) * h.fog;
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(10,11,13,.92)';
+      ctx.lineJoin = 'round';
+      ctx.strokeText(txt, h.sx, y);
+      ctx.fillStyle = SECC[/** @type {'other'} */ (h.k)] || '#cfd2d6';
+      ctx.fillText(txt, h.sx, y);
     });
     ctx.globalAlpha = 1;
     {
@@ -560,6 +671,32 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     cam.px = sx - W / 2 - X * k2;
     cam.py = sy - H / 2 - Y * k2;
     cam.k = k2;
+  }
+
+  /** 화면 좌표가 허브 라벨 위면 그 섹터 키(라벨 클릭 = 섹터 단독 보기). @param {number} sx @param {number} sy @returns {string|null} */
+  function hubLabelHit(sx, sy) {
+    /** @type {string|null} */
+    let best = null;
+    let bd = 1e9;
+    for (const h of hubP) {
+      if (Math.abs(sx - h.lx) <= h.lw && sy >= h.ly - 13 && sy <= h.ly + 4) {
+        const d = Math.hypot(sx - h.lx, sy - h.ly);
+        if (d < bd) { bd = d; best = h.k; }
+      }
+    }
+    return best;
+  }
+
+  /** 화면 좌표가 허브 위면 그 섹터 키(가장 가까운 것). @param {number} sx @param {number} sy @returns {string|null} */
+  function hubHit(sx, sy) {
+    /** @type {string|null} */
+    let best = null;
+    let bd = 1e9;
+    for (const h of hubP) {
+      const d = Math.hypot(sx - h.sx, sy - h.sy);
+      if (d < Math.max(h.r * 0.62, 10) + 6 && d < bd) { bd = d; best = h.k; }
+    }
+    return best;
   }
 
   /** @param {number} sx @param {number} sy @returns {Body|null} */
@@ -664,8 +801,14 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     wake();
     if (!gs) return;
     if (!gs.pinch && !gs.moved && performance.now() - gs.t < 500) {
-      if (gs.node) store.dispatch({ type: 'select', id: gs.node.d.id });
-      else store.dispatch({ type: 'deselect' });
+      const hl = hubLabelHit(e.clientX, e.clientY);
+      if (hl) store.dispatch({ type: 'soloSector', sector: hl });
+      else if (gs.node) store.dispatch({ type: 'select', id: gs.node.d.id });
+      else {
+        const hk = hubHit(e.clientX, e.clientY);
+        if (hk) store.dispatch({ type: 'soloSector', sector: hk });
+        else store.dispatch({ type: 'deselect' });
+      }
     }
     if (gs.node) {
       gs.node.fx = gs.node.fy = gs.node.fz = null;
@@ -788,6 +931,11 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
   running = true;
   fit(false);
   loop();
+
+  // ?debug=1 일 때만 화면 검수용 읽기 전용 훅(허브 투영·카메라·스토어).
+  if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('debug')) {
+    /** @type {any} */ (globalThis).__cgDebug = { hubP: () => hubP, cam, store };
+  }
 
   return {
     /** @param {number} f */

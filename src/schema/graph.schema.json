@@ -3,40 +3,151 @@
   "$id": "graph.v2.json",
   "title": "causal-map graph.json v2",
   "type": "object",
-  "required": ["schemaVersion", "meta", "nodes", "edges", "cors"],
+  "required": [
+    "schemaVersion",
+    "meta",
+    "nodes",
+    "edges",
+    "cors"
+  ],
   "additionalProperties": false,
   "properties": {
-    "schemaVersion": { "const": 2 },
+    "schemaVersion": {
+      "const": 2
+    },
     "meta": {
       "type": "object",
-      "required": ["version", "generated", "nodes", "edges", "levels"],
+      "required": [
+        "version",
+        "generated",
+        "nodes",
+        "edges",
+        "levels"
+      ],
       "properties": {
-        "version": { "type": "string", "minLength": 1 },
-        "generated": { "type": "string" },
-        "nodes": { "type": "integer", "minimum": 0 },
-        "edges": { "type": "integer", "minimum": 0 },
-        "levels": { "type": "object", "additionalProperties": { "type": "integer" } }
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generated": {
+          "type": "string"
+        },
+        "nodes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "edges": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "levels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        }
       }
     },
     "nodes": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "name", "cat"],
+        "required": [
+          "id",
+          "name",
+          "cat"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "minLength": 1 },
-          "name": { "type": "string", "minLength": 1 },
-          "cat": { "enum": ["Real_Economy", "Inflation_Labor", "Policy", "Financial_Market", "External_Sector", "Macro_Korea", "Macro_Global", "Industry_AI", "Industry_Semiconductor", "Industry_Bio", "Industry_Defense", "Labor_Demographics", "Institutions", "Environment", "Fiscal", "Money_Credit", "Trade_Global", "Other"] },
-          "layer": { "type": ["integer", "null"] },
-          "series": { "type": ["string", "null"] },
-          "desc": { "type": ["string", "null"], "minLength": 1, "maxLength": 240 },
-          "descSrc": { "type": ["string", "null"], "minLength": 1, "maxLength": 120 },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "cat": {
+            "enum": [
+              "Real_Economy",
+              "Inflation_Labor",
+              "Policy",
+              "Financial_Market",
+              "External_Sector",
+              "Macro_Korea",
+              "Macro_Global",
+              "Industry_AI",
+              "Industry_Semiconductor",
+              "Industry_Bio",
+              "Industry_Defense",
+              "Labor_Demographics",
+              "Institutions",
+              "Environment",
+              "Fiscal",
+              "Money_Credit",
+              "Trade_Global",
+              "Other"
+            ]
+          },
+          "layer": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "series": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "desc": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "descSrc": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 120
+          },
           "aka": {
-            "type": ["array", "null"],
+            "type": [
+              "array",
+              "null"
+            ],
             "maxItems": 12,
             "uniqueItems": true,
-            "items": { "type": "string", "minLength": 1, "maxLength": 40 }
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            }
+          },
+          "sector": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "macro",
+              "finance",
+              "semi",
+              "bio",
+              "energy",
+              "trade",
+              "policy",
+              "labor",
+              "other",
+              null
+            ],
+            "description": "구심점 섹터(11/23). 없으면 other 취급."
           }
         }
       }
@@ -45,30 +156,112 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "src", "dst", "sign", "level", "status", "note", "r", "rsrc", "evidence"],
+        "required": [
+          "id",
+          "src",
+          "dst",
+          "sign",
+          "level",
+          "status",
+          "note",
+          "r",
+          "rsrc",
+          "evidence"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "minLength": 1 },
-          "src": { "type": "string", "minLength": 1 },
-          "dst": { "type": "string", "minLength": 1 },
-          "sign": { "enum": ["+", "-", "±"] },
-          "level": { "enum": ["A", "B", "C", "D"] },
-          "status": { "type": "string" },
-          "note": { "type": "string" },
-          "cond": { "type": ["string", "null"] },
-          "lag": { "enum": ["immediate", "short", "medium", "long", null] },
-          "regime": { "type": ["string", "null"] },
-          "strength": { "type": ["string", "null"] },
-          "sub": { "enum": ["+", "-"] },
-          "r": { "type": ["number", "null"] },
-          "rsrc": { "type": "string" },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "src": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dst": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sign": {
+            "enum": [
+              "+",
+              "-",
+              "±"
+            ]
+          },
+          "level": {
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "cond": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lag": {
+            "enum": [
+              "immediate",
+              "short",
+              "medium",
+              "long",
+              null
+            ]
+          },
+          "regime": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "strength": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sub": {
+            "enum": [
+              "+",
+              "-"
+            ]
+          },
+          "r": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "rsrc": {
+            "type": "string"
+          },
           "evidence": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["kind", "stance"],
+              "required": [
+                "kind",
+                "stance"
+              ],
               "additionalProperties": false,
-              "properties": { "kind": { "type": "string" }, "stance": { "type": "string" } }
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "stance": {
+                  "type": "string"
+                }
+              }
             }
           }
         }
@@ -78,12 +271,27 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["src", "dst", "r"],
+        "required": [
+          "src",
+          "dst",
+          "r"
+        ],
         "properties": {
-          "src": { "type": "string" },
-          "dst": { "type": "string" },
-          "r": { "type": "number" },
-          "n": { "type": ["integer", "null"] }
+          "src": {
+            "type": "string"
+          },
+          "dst": {
+            "type": "string"
+          },
+          "r": {
+            "type": "number"
+          },
+          "n": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
         }
       }
     }

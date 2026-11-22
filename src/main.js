@@ -2,7 +2,7 @@
 // 진입점: 데이터 로드 → 그래프·저장소 생성 → 캔버스·시트·필터·검색·갱신·패널 연결.
 import { loadGraph, LOAD_FAIL_MSG } from './data/loader.js';
 import { createGraph } from './engine/graph.js';
-import { categoriesPresent } from './store/labels.js';
+import { categoriesPresent, sectorsPresent } from './store/labels.js';
 import { createStore, defaultState } from './store/store.js';
 import { visible } from './store/select.js';
 import { createCanvas3D } from './render/canvas3d.js';
@@ -32,7 +32,7 @@ async function boot() {
   }
   const data = loaded.data;
   const graph = createGraph(data);
-  const store = createStore(defaultState(categoriesPresent(graph)), { nodeIds: graph.nodes.map((n) => n.id) });
+  const store = createStore(defaultState(categoriesPresent(graph), sectorsPresent(graph)), { nodeIds: graph.nodes.map((n) => n.id) });
 
   const search = initSearch({
     graph,
@@ -65,8 +65,10 @@ async function boot() {
     graph,
     store,
     categories: categoriesPresent(graph),
+    sectors: sectorsPresent(graph),
     flv: byId('flv'),
     fcat: byId('fcat'),
+    fsec: byId('fsec'),
     thrEl: /** @type {HTMLInputElement} */ (byId('thr')),
     thrv: byId('thrv'),
     reset: byId('freset'),

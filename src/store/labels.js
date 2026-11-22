@@ -48,6 +48,44 @@ export const CC = {
 /** 등급 → 색 (원본 GC). */
 export const GC = { A: '#ff3d6e', B: '#3d9bff', C: '#5f7a94', D: '#93a8bd' };
 
+/** 섹터(구심점) → 한글 이름. 11/23 사용자 지시: 섹터별 구심점 구조. 키 순서가 배치 순서. */
+export const SN = {
+  macro: '거시경제',
+  finance: '금융·시장',
+  semi: '반도체·AI',
+  bio: '바이오',
+  energy: '에너지·환경',
+  trade: '무역·지정학',
+  policy: '제도·정책',
+  labor: '노동·인구',
+  other: '이론·기타',
+};
+
+/** 섹터 → 색(허브·노드 클러스터 색). */
+export const SECC = {
+  macro: '#ffc247',
+  finance: '#4da3ff',
+  semi: '#c77dff',
+  bio: '#69db7c',
+  energy: '#35e0a1',
+  trade: '#5b7cff',
+  policy: '#a6b8cc',
+  labor: '#ff8a4d',
+  other: '#8a9bb0',
+};
+
+/** @type {string[]} 섹터 키 전체 순서 */
+export const SECTOR_ORDER = Object.keys(SN);
+
+/**
+ * 데이터에 실제로 있는 섹터만, SN 순서대로. sector가 없는 노드는 'other'로 본다.
+ * @param {{nodes: {sector?: string|null}[]}} g
+ * @returns {string[]}
+ */
+export function sectorsPresent(g) {
+  return SECTOR_ORDER.filter((k) => g.nodes.some((n) => (n.sector || 'other') === k));
+}
+
 /** @type {string[]} 범주 키 전체 순서 */
 export const CATEGORY_ORDER = Object.keys(CN);
 

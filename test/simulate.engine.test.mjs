@@ -206,9 +206,9 @@ test('paths: 각 impact의 최상 경로가 ScoredPath로 들어간다', () => {
   assert.ok(r.paths.length <= 15);
 });
 
-test('실제 graph.json: 미 10년물·원/달러 +1, 예외 없음·1초 이내', () => {
+test('실제 graph.json: 미국 10년물·원/달러 +1, 예외 없음·1초 이내', () => {
   const g = createGraph(migrate(structuredClone(real)));
-  for (const [name, sign] of /** @type {[string, 1|-1][]} */ ([['미 10년물', 1], ['원/달러', 1]])) {
+  for (const [name, sign] of /** @type {[string, 1|-1][]} */ ([['미국 10년물', 1], ['원/달러', 1]])) {
     assert.ok(g.byId.has(name), name);
     const t0 = performance.now();
     const r = simulate(g, name, sign);

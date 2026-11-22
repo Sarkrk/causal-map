@@ -1,7 +1,7 @@
 // @ts-check
 // 필터 칩(등급·범주), |r| 슬라이더, 표시 토글. 원본 chip()·tg()·thrEl 동작.
 // 화면 상태는 store를 따라간다(subscribe에서 칩 on/off 동기화).
-import { LEVELS, LEVEL_TEXT, CC, GC, CN } from '../store/labels.js';
+import { LEVELS, LEVEL_TEXT, CN, CC, SN, SECC, GC } from '../store/labels.js';
 import { defaultState } from '../store/store.js';
 
 /** @typedef {import('../store/store.js').AppState} AppState */
@@ -10,16 +10,16 @@ import { defaultState } from '../store/store.js';
 
 /**
  * @param {{
- *   graph: Graph, store: Store, categories: string[],
- *   flv: HTMLElement, fcat: HTMLElement, thrEl: HTMLInputElement, thrv: HTMLElement,
+ *   graph: Graph, store: Store, categories: string[], sectors: string[],
+ *   flv: HTMLElement, fcat: HTMLElement, fsec: HTMLElement, thrEl: HTMLInputElement, thrv: HTMLElement,
  *   reset: HTMLElement, badge: HTMLElement,
  *   toggles: {tweak: HTMLElement, tnr: HTMLElement, tcor: HTMLElement, tlab: HTMLElement, torp: HTMLElement, tspin: HTMLElement, twob: HTMLElement}
  * }} o
  * @returns {void}
  */
 export function initFilters(o) {
-  const { graph, store, categories, flv, fcat, thrEl, thrv, toggles, reset, badge } = o;
-  const base = defaultState(categories);
+  const { graph, store, categories, sectors, flv, fcat, fsec, thrEl, thrv, toggles, reset, badge } = o;
+  const base = defaultState(categories, sectors);
 
   /** @type {Map<HTMLElement, (st: AppState) => boolean>} */
   const chips = new Map();
@@ -61,6 +61,15 @@ export function initFilters(o) {
       () => store.dispatch({ type: 'toggleCat', cat: k }),
     );
   }
+  for (const k of sectors) {
+    chip(
+      fsec,
+      SN[/** @type {'other'} */ (k)],
+      SECC[/** @type {'other'} */ (k)],
+      (st) => st.filters.sectors.includes(k),
+      () => store.dispatch({ type: 'toggleSector', sector: k }),
+    );
+  }
 
   const paintThr = () => thrEl.style.setProperty('--p', ((+thrEl.value - +(thrEl.min || 0)) / ((+thrEl.max || 1) - +(thrEl.min || 0))) * 100 + '%');
   thrEl.addEventListener('input', paintThr);
@@ -92,6 +101,8 @@ export function initFilters(o) {
       f.levels.filter((x) => !b.levels.includes(x)).length +
       b.levels.filter((x) => !f.levels.includes(x)).length +
       b.cats.filter((c) => !f.cats.includes(c)).length +
+      f.sectors.filter((c) => !b.sectors.includes(c)).length +
+      b.sectors.filter((c) => !f.sectors.includes(c)).length +
       (f.thr > 0 ? 1 : 0) +
       (f.showNR !== b.showNR ? 1 : 0) +
       (f.showCor !== b.showCor ? 1 : 0) +

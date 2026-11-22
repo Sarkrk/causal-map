@@ -4,6 +4,7 @@
 
 /** @typedef {'Real_Economy'|'Inflation_Labor'|'Policy'|'Financial_Market'|'External_Sector'|'Macro_Korea'|'Macro_Global'|'Industry_AI'|'Industry_Semiconductor'|'Industry_Bio'|'Industry_Defense'|'Labor_Demographics'|'Institutions'|'Environment'|'Fiscal'|'Money_Credit'|'Trade_Global'|'Other'} Category */
 /** @typedef {'+'|'-'|'±'} Sign   // 데이터는 ASCII '-'. 화면 표시는 '−'(U+2212). */
+/** @typedef {'macro'|'finance'|'semi'|'bio'|'energy'|'trade'|'policy'|'labor'|'other'} Sector   // 구심점 섹터(11/23). 없으면 other 취급. */
 /** @typedef {'A'|'B'|'C'|'D'} Level */
 /** @typedef {'immediate'|'short'|'medium'|'long'} Lag   immediate=1개월 미만, short=1~3개월, medium=3~12개월, long=12개월 초과 */
 /** @typedef {string} Regime   정규 어휘는 schema/v2.js의 REGIMES. 어휘 밖 문자열은 validate가 warning. */
@@ -13,6 +14,7 @@
  * @property {string} id      안정 ID (v1에서는 name과 같음. 코드는 반드시 id로 참조)
  * @property {string} name    표시 이름
  * @property {Category} cat
+ * @property {Sector|null} [sector]   구심점 섹터(11/23 추가, 없으면 other 취급)
  * @property {number|null} [layer]
  * @property {string|null} [series]
  * @property {string|null} [desc]     짧은 설명(1~240자)

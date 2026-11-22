@@ -1,6 +1,7 @@
 // @ts-check
 // 가시성 선택자와 강조 이웃 계산. canvas와 패널이 같은 함수를 쓴다. 전부 순수 함수.
 import { neighborhood } from '../engine/traverse.js';
+import { SECTOR_ORDER } from './labels.js';
 
 /** @typedef {import('../types.js').Graph} Graph */
 /** @typedef {import('../types.js').EdgeData} EdgeData */
@@ -18,7 +19,20 @@ import { neighborhood } from '../engine/traverse.js';
 function catsOk(g, src, dst, f) {
   const a = g.byId.get(src);
   const b = g.byId.get(dst);
-  return !!a && !!b && f.cats.includes(a.cat) && f.cats.includes(b.cat);
+  return !!a && !!b && f.cats.includes(a.cat) && f.cats.includes(b.cat)
+    && f.sectors.includes(a.sector || 'other') && f.sectors.includes(b.sector || 'other');
+}
+
+/**
+ * 엣지의 등급·약한근거·상관계수 문턱 통과 여부(범주·섹터와 무관).
+ * @param {EdgeData} e
+ * @param {Filters} f
+ * @returns {boolean}
+ */
+function edgePasses(e, f) {
+  if (!f.levels.includes(e.level)) return false;
+  if (!f.weak && e.level === 'B' && e.sub === '-') return false;
+  return e.r == null ? f.showNR : Math.abs(e.r) >= f.thr;
 }
 
 /**
@@ -29,10 +43,7 @@ function catsOk(g, src, dst, f) {
  * @returns {boolean}
  */
 export function causalVisible(g, e, f) {
-  if (!f.levels.includes(e.level)) return false;
-  if (!f.weak && e.level === 'B' && e.sub === '-') return false;
-  if (e.r == null ? !f.showNR : Math.abs(e.r) < f.thr) return false;
-  return catsOk(g, e.src, e.dst, f);
+  return edgePasses(e, f) && catsOk(g, e.src, e.dst, f);
 }
 
 /**
@@ -68,10 +79,30 @@ export function visible(g, state, sel = state.view.selected) {
     has.add(c.src);
     has.add(c.dst);
   }
+  // 고립 판정은 섹터 필터를 무시한 연결성으로 한다(섹터 단독 보기에서 교차 엣지만 가진 노드가
+  // 전부 고립으로 사라지는 것 방지). 범주·등급 필터는 그대로 적용.
+  if (f.sectors.length < SECTOR_ORDER.length) {
+    for (const e of g.edges) {
+      if (!edgePasses(e, f)) continue;
+      const a = g.byId.get(e.src), b = g.byId.get(e.dst);
+      if (!a || !b || !f.cats.includes(a.cat) || !f.cats.includes(b.cat)) continue;
+      has.add(e.src);
+      has.add(e.dst);
+    }
+    if (f.showCor) {
+      for (const c of g.cors) {
+        const a = g.byId.get(c.src), b = g.byId.get(c.dst);
+        if (!a || !b || !f.cats.includes(a.cat) || !f.cats.includes(b.cat)) continue;
+        has.add(c.src);
+        has.add(c.dst);
+      }
+    }
+  }
   /** @type {Set<string>} */
   const nodes = new Set();
   for (const n of g.nodes) {
     if (!f.cats.includes(n.cat)) continue;
+    if (!f.sectors.includes(n.sector || 'other')) continue;
     if (!state.prefs.hideOrph || has.has(n.id) || n.id === sel) nodes.add(n.id);
   }
   return { nodes, causal, cors };

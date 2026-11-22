@@ -12,7 +12,8 @@ const CATS = ['Real_Economy', 'Inflation_Labor', 'Policy', 'Financial_Market', '
 const SIGNS = ['+', '-', '±'];
 const LEVELS = ['A', 'B', 'C', 'D'];
 const NODE_REQUIRED = ['id', 'name', 'cat'];
-const NODE_KEYS = ['id', 'name', 'cat', 'layer', 'series', 'desc', 'descSrc', 'aka'];
+const NODE_KEYS = ['id', 'name', 'cat', 'sector', 'layer', 'series', 'desc', 'descSrc', 'aka'];
+const SECTORS = ['macro', 'finance', 'semi', 'bio', 'energy', 'trade', 'policy', 'labor', 'other'];
 const DESC_MAX = 240;
 const DESC_SRC_MAX = 120;
 const AKA_MAX_N = 12;
@@ -165,6 +166,7 @@ function checkNodes(nodes, errors) {
     if ('id' in n && !nonEmptyStr(n.id)) errors.push(`${label}: id must be a non-empty string`);
     if ('name' in n && !nonEmptyStr(n.name)) errors.push(`${label}: name must be a non-empty string`);
     if ('cat' in n && !CATS.includes(n.cat)) errors.push(`${label}: cat "${String(n.cat)}" invalid`);
+    if ('sector' in n && n.sector !== null && !SECTORS.includes(n.sector)) errors.push(`${label}: sector "${String(n.sector)}" invalid`);
     if ('layer' in n && n.layer !== null && !Number.isInteger(n.layer)) errors.push(`${label}: layer must be integer or null`);
     if ('series' in n && n.series !== null && typeof n.series !== 'string') errors.push(`${label}: series must be string or null`);
     checkNodeDesc(n, label, errors);
