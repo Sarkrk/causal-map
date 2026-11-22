@@ -43,12 +43,12 @@ test('산업지도: 공급 사슬·병목 참조 유효', () => {
   }
 });
 
-test('산업지도: 단계 흐름은 전진, 피드백은 aisw→design 하나만', () => {
+test('산업지도: 단계 흐름은 전진, 피드백은 aisw→fabless 하나만', () => {
   const order = Object.fromEntries(g.stages.map((s) => [s.id, s.order]));
   for (const s of g.stages) {
     for (const t of s.flows_to || []) {
       assert.ok(order[t] !== undefined, `${s.id} flows_to 미존재: ${t}`);
-      const feedback = s.id === 'aisw' && t === 'design'; // 인기→설계 수요 선순환(의도된 피드백)
+      const feedback = s.id === 'aisw' && t === 'fabless'; // 인기→칩 설계사 수요 선순환(의도된 피드백)
       assert.ok(feedback || order[t] > s.order, `${s.id}->${t} 역행`);
     }
   }
