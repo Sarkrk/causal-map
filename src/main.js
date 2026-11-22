@@ -92,16 +92,20 @@ async function boot() {
   byId('zc').addEventListener('click', () => canvas.recenter());
 
   // 산업 지도(반도체 밸류체인) 토글 — 11/23
-  const industry = initIndustry({
-    revealNode: (name) => {
-      const node = graph.nodes.find((n) => n.id === name || n.name === name);
-      if (!node) return;
-      revealNode(graph, store, node);
-      store.dispatch({ type: 'select', id: node.id });
-    },
-    onMode: () => {},
-  });
-  byId('indbtn').addEventListener('click', () => industry.toggle());
+  // 옛 HTML 캐시 + 새 JS 혼합 시 요소가 없을 수 있다 → 앱 전체가 죽지 않게 방어(11/23)
+  const indBtn = byId('indbtn');
+  if (indBtn && document.getElementById('indview')) {
+    const industry = initIndustry({
+      revealNode: (name) => {
+        const node = graph.nodes.find((n) => n.id === name || n.name === name);
+        if (!node) return;
+        revealNode(graph, store, node);
+        store.dispatch({ type: 'select', id: node.id });
+      },
+      onMode: () => {},
+    });
+    indBtn.addEventListener('click', () => industry.toggle());
+  }
 
   // 왼쪽 아래 상태줄: 데이터 규모를 항상 한 줄로 보여준다(시트를 열지 않아도 보이게).
   stat.textContent = `노드 ${graph.nodes.length.toLocaleString('ko-KR')} · 관계선 ${graph.edges.length.toLocaleString('ko-KR')}`;

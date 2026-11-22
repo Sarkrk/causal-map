@@ -182,5 +182,16 @@ body.ind-on #cv,body.ind-on #hud,body.ind-on #ro,body.ind-on #zoombox,body.ind-o
 <div id="indview" hidden></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <script type="module" src="src/main.js"></script>
-<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});</script>
+<script>
+// SW 등록 + 새 워커가 인계하면 1회 자동 새로고침(옛 HTML/JS 혼합 방지, 11/23)
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).catch(()=>{});
+  var cgReloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange',function(){
+    if(cgReloaded)return; cgReloaded=true;
+    try{sessionStorage.setItem('cg_sw_reload','1');}catch(e){}
+    location.reload();
+  });
+}
+</script>
 </body></html>
