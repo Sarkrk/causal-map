@@ -108,9 +108,62 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 #fstat .fbar{display:flex;gap:2px;height:6px;border-radius:3px;overflow:hidden;margin:var(--s2) 0 var(--s1)}
 #fstat .fbar i{display:block;height:100%}
 #fstat .fnote{font-size:var(--f1);color:var(--mu);line-height:1.5;margin-top:var(--s1)}
+/* 산업 지도(11/23) — 평면 밸류체인 맵 */
+body.ind-on #cv,body.ind-on #hud,body.ind-on #ro,body.ind-on #zoombox,body.ind-on #zc,body.ind-on #stat,body.ind-on #sw,body.ind-on #fb,body.ind-on #ns,body.ind-on #fs{display:none}
+#indview{position:fixed;inset:0;z-index:6;display:flex;flex-direction:column;background:radial-gradient(ellipse at 50% 42%,#17181c 0%,#0e0f12 55%,#070708 100%);overflow:hidden}
+#indhead{padding:calc(env(safe-area-inset-top) + 64px) var(--s4) var(--s2);overflow-y:auto;max-height:44vh;flex:none}
+#indhead h1{font-size:var(--f4);margin:0 0 var(--s2)}
+.ind-intro{color:var(--mu);font-size:var(--f2);line-height:1.65;margin:0 0 var(--s3)}
+.ind-intro.folded{display:none}
+.ind-fold{border:1px solid var(--line);background:var(--card);color:var(--mu);border-radius:8px;padding:3px 8px;font-size:var(--f1);cursor:pointer;margin-bottom:var(--s2)}
+.ind-strip{display:flex;align-items:stretch;gap:6px;overflow-x:auto;padding-bottom:6px}
+.ind-stagechip{flex:none;min-width:118px;max-width:172px;text-align:left;border:1px solid var(--line);border-left:3px solid var(--sc,#8a9bb0);background:var(--card);border-radius:var(--r);padding:8px 10px;color:var(--tx);cursor:pointer}
+.ind-stagechip b{display:block;font-size:var(--f2)}
+.ind-stagechip span{display:block;color:var(--mu);font-size:var(--f1);margin-top:2px;line-height:1.4}
+.ind-arrow{align-self:center;color:var(--mu);flex:none}
+.ind-macro{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:var(--s2)}
+.ind-macro-t{color:var(--mu);font-size:var(--f1)}
+#indscroll{flex:1;overflow:auto;position:relative;padding:var(--s2) var(--s4) 30px}
+#indinner{position:relative;display:flex;gap:30px;align-items:flex-start;width:max-content;min-width:100%}
+#indsvg{position:absolute;left:0;top:0;pointer-events:none;z-index:0;overflow:visible}
+.ind-col{position:relative;z-index:1;width:216px;flex:none;display:flex;flex-direction:column;gap:6px}
+.ind-colhead{text-align:left;border:1px solid var(--line);border-top:3px solid var(--sc,#8a9bb0);background:var(--panel);border-radius:var(--r);padding:10px;color:var(--tx);cursor:pointer}
+.ind-colhead b{display:block;font-size:var(--f3)}
+.ind-colhead span{display:block;color:var(--mu);font-size:var(--f1);margin-top:3px;line-height:1.4}
+.ind-sub{color:var(--sc,#8a9bb0);font-size:var(--f1);font-weight:700;margin:6px 0 0;letter-spacing:.05em}
+.ind-card{position:relative;text-align:left;border:1px solid var(--line);background:rgba(22,23,26,.82);border-radius:var(--r);padding:8px 10px;color:var(--tx);cursor:pointer;transition:opacity .15s,border-color .15s,box-shadow .15s}
+.ind-card b{display:block;font-size:var(--f2)}
+.ind-tk{display:block;color:var(--mu);font-size:10px;margin-top:1px}
+.ind-role{display:block;color:var(--mu);font-size:var(--f1);line-height:1.45;margin-top:3px}
+.ind-card:hover{border-color:var(--accln)}
+.ind-card.sel{border-color:var(--sc,#8a9bb0);box-shadow:0 0 0 1px var(--sc,#8a9bb0),var(--sh)}
+.ind-card.rel{border-color:var(--accln)}
+.ind-card.dim{opacity:.3}
+.ind-cand{position:absolute;right:6px;top:6px;font-style:normal;font-size:9px;color:var(--mu);border:1px solid var(--line);border-radius:6px;padding:1px 4px}
+.ind-bns{flex:none;display:flex;gap:8px;overflow-x:auto;padding:var(--s2) var(--s4) calc(env(safe-area-inset-bottom) + var(--s2))}
+.ind-bn{flex:none;max-width:280px;text-align:left;border:1px solid var(--line);border-left:3px solid #ffc247;background:var(--card);border-radius:var(--r);padding:8px 10px;color:var(--tx);cursor:pointer}
+.ind-bn b{display:block;font-size:var(--f2)}
+.ind-bn span{display:block;color:var(--mu);font-size:var(--f1);line-height:1.5;margin-top:3px}
+#indpanel{position:fixed;right:0;top:0;bottom:0;width:min(400px,92vw);z-index:7;background:var(--panel);border-left:1px solid var(--line);box-shadow:var(--sh);backdrop-filter:blur(14px);display:flex;flex-direction:column}
+@media (max-width:640px){#indpanel{left:0;right:0;top:auto;bottom:0;width:auto;max-height:58vh;border-left:0;border-top:1px solid var(--line)}}
+.indp-hd{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;padding:calc(env(safe-area-inset-top) + var(--s3)) var(--s4) var(--s2);border-bottom:1px solid var(--line);border-top:3px solid var(--sc,#8a9bb0)}
+.indp-hd h2{margin:0;font-size:var(--f3)}
+.indp-hd small{color:var(--mu);font-weight:400}
+.indp-sub{color:var(--mu);font-size:var(--f1);margin-top:3px}
+.indp-bd{padding:var(--s3) var(--s4) calc(env(safe-area-inset-bottom) + var(--s4));overflow-y:auto}
+.indp-role{line-height:1.65;margin:0 0 var(--s3)}
+.indp-sec{margin-bottom:var(--s3)}
+.indp-sec>b{display:block;font-size:var(--f1);color:var(--mu);margin-bottom:6px;letter-spacing:.04em}
+.indp-tags{display:flex;flex-wrap:wrap;gap:6px}
+.ind-tag{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:4px 8px;font-size:var(--f1);color:var(--tx)}
+.ind-link{cursor:pointer}
+.ind-link:hover{border-color:var(--accln)}
+.indp-chain{font-size:var(--f1);color:var(--tx);line-height:1.6;padding:3px 0;border-bottom:1px dashed var(--line)}
+.indp-src{display:block;color:#7aa2f7;font-size:var(--f1);line-height:1.6;word-break:break-all;text-decoration:none}
+.indp-warn{color:#ffc247;font-size:var(--f1);border:1px dashed rgba(255,194,71,.4);border-radius:8px;padding:8px;line-height:1.5}
 </style></head><body>
 <canvas id="cv"></canvas><div id="hud"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></div><div id="ro"></div>
-<div id="top"><div id="sw"><input id="q" type="search" placeholder="노드 검색" autocomplete="off"><div id="sug"></div></div><button class="fab" id="fb" aria-label="보기 설정">☰<span id="fbadge"></span></button></div>
+<div id="top"><div id="sw"><input id="q" type="search" placeholder="노드 검색" autocomplete="off"><div id="sug"></div></div><button class="fab" id="indbtn" aria-label="산업 지도 열기" style="width:auto;padding:0 12px;font-size:13px">산업 지도</button><button class="fab" id="fb" aria-label="보기 설정">☰<span id="fbadge"></span></button></div>
 <div id="zoombox"><button class="fab" id="zi" aria-label="확대">+</button><button class="fab" id="zo" aria-label="축소">−</button><button class="fab" id="zf" title="전체 보기" aria-label="전체 보기">⤢</button></div>
 <button class="fab" id="zc" title="중심으로" aria-label="중심으로 되돌리기">◎</button>
 <div id="stat" role="status">불러오는 중…</div>
@@ -126,6 +179,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
  <div class="sec">표시</div><div class="row"><button class="chip" id="tcor">상관선(점선)</button><button class="chip" id="tlab">라벨 항상</button><button class="chip on" id="torp">연결 없는 점 숨김</button><button class="chip on" id="tspin">자동 회전</button><button class="chip on" id="twob">흔들림</button><button class="chip" id="trel">다시 배치</button></div>
  <div class="sec"></div><div class="row"><button class="chip" id="dupd">⟳ 최신 데이터 받기</button></div><div id="dmsg" class="sub" style="margin-top:8px"></div>
 </div></div>
+<div id="indview" hidden></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <script type="module" src="src/main.js"></script>
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});</script>

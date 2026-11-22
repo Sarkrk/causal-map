@@ -13,6 +13,7 @@ import { initUpdate } from './ui/update.js';
 import { initPanel } from './ui/panel.js';
 import { initRoute, shareLink } from './ui/route.js';
 import { initDataInfo } from './ui/datainfo.js';
+import { initIndustry } from './ui/industry.js';
 
 /** @param {string} id */
 function byId(id) {
@@ -89,6 +90,18 @@ async function boot() {
   byId('zo').addEventListener('click', () => canvas.zoomBy(1 / 1.35));
   byId('zf').addEventListener('click', () => canvas.fit(true));
   byId('zc').addEventListener('click', () => canvas.recenter());
+
+  // 산업 지도(반도체 밸류체인) 토글 — 11/23
+  const industry = initIndustry({
+    revealNode: (name) => {
+      const node = graph.nodes.find((n) => n.id === name || n.name === name);
+      if (!node) return;
+      revealNode(graph, store, node);
+      store.dispatch({ type: 'select', id: node.id });
+    },
+    onMode: () => {},
+  });
+  byId('indbtn').addEventListener('click', () => industry.toggle());
 
   // 왼쪽 아래 상태줄: 데이터 규모를 항상 한 줄로 보여준다(시트를 열지 않아도 보이게).
   stat.textContent = `노드 ${graph.nodes.length.toLocaleString('ko-KR')} · 관계선 ${graph.edges.length.toLocaleString('ko-KR')}`;
