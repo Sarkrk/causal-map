@@ -256,7 +256,7 @@ export function initIndustry(opts) {
     let left = 0;
     let right = w;
     let bottom = h;
-    if (panelOpen) { if (small) bottom = h * 0.58; else right = w - Math.min(400, w * 0.92); }
+    if (panelOpen) { if (small) bottom = h * 0.48; else right = w - Math.min(400, w * 0.92); }
     return { left, right, top: topPad(), bottom };
   }
   function clampCam() {
@@ -635,7 +635,49 @@ export function initIndustry(opts) {
     /** @type {SVGElement[]} */
     const labels = [];
     // 선택 안 한 선 먼저, 활성 선은 위에 그린다.
-    const order = [...data.chains].sort((x, y) => Number(sel && (x.from === sel || x.to === sel)) - Number(sel && (y.from === sel || y.to === sel)));
+    // 선택한 기업의 공급 관계(supplies_to/sourced_from)도 선으로 그린다(사슬에 없는 것만).
+    /** @type {{from:string,to:string,what?:string}[]} */
+    const edges = [...data.chains];
+    if (sel) {
+      const have = new Set(edges.map((e) => e.from + '>' + e.to));
+      const c0 = data.companies.find((x) => x.id === sel);
+      if (c0) {
+        for (const t of c0.supplies_to) if (!have.has(sel + '>' + t)) { edges.push({ from: sel, to: t }); have.add(sel + '>' + t); }
+        for (const f of c0.sourced_from) if (!have.has(f + '>' + sel)) { edges.push({ from: f, to: sel }); have.add(f + '>' + sel); }
+      }
+    }
+    // 단계(계통) 간 분기선: 컬럼 머리끼리 이어서 갈라지는 길을 보여준다. 가까우면 직선, 멀면 위로 둥글게.
+    const NS0 = 'http://www.w3.org/2000/svg';
+    const heads = new Map();
+    for (const [sid, col] of cols) {
+      const h = col.firstElementChild;
+      if (h instanceof HTMLElement) heads.set(sid, { l: col.offsetLeft, r: col.offsetLeft + col.offsetWidth, y: col.offsetTop + h.offsetHeight / 2, t: col.offsetTop });
+    }
+    const orderOf = new Map(data.stages.map((x) => [x.id, x.order]));
+    for (const st of data.stages) {
+      for (const tid of st.flows_to) {
+        const A = heads.get(st.id);
+        const B = heads.get(tid);
+        if (!A || !B || (orderOf.get(tid) || 0) <= st.order) continue;
+        const adj = (orderOf.get(tid) || 0) - st.order === 1;
+        const lift = adj ? 0 : 26 + ((orderOf.get(tid) || 0) - st.order) * 8;
+        const x1 = A.r;
+        const x2 = B.l;
+        const y = A.y;
+        const path = document.createElementNS(NS0, 'path');
+        path.setAttribute('class', 'ind-line ind-flow');
+        path.setAttribute('d', adj ? `M${x1},${y} L${x2},${B.y}` : `M${x1},${y} C${x1 + 30},${y - lift * 1.6} ${x2 - 30},${B.y - lift * 1.6} ${x2},${B.y}`);
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', st.color);
+        path.setAttribute('stroke-width', '4');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-dasharray', adj ? '' : '10 7');
+        path.setAttribute('opacity', sel ? '0.12' : '0.85');
+        path.setAttribute('marker-end', 'url(#indah)');
+        svg.appendChild(path);
+      }
+    }
+    const order = edges.sort((x, y) => Number(sel && (x.from === sel || x.to === sel)) - Number(sel && (y.from === sel || y.to === sel)));
     for (const ch of order) {
       const a = pos(ch.from);
       const b = pos(ch.to);
@@ -663,7 +705,7 @@ export function initIndustry(opts) {
       p.setAttribute('opacity', dim ? '0.06' : active ? '0.95' : '0.5');
       p.setAttribute('marker-end', 'url(#indah)');
       svg.appendChild(p);
-      if (active && ch.what) {
+      if (active && 'what' in ch && ch.what) {
         const mx = (x1 + x2) / 2;
         const my = (y1 + y2) / 2;
         const t = document.createElementNS(NS, 'text');

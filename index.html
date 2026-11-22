@@ -141,7 +141,7 @@ body.ind-on #cv,body.ind-on #hud,body.ind-on #ro,body.ind-on #zoombox,body.ind-o
 .ind-bn span{display:block;color:var(--mu);font-size:var(--f1);line-height:1.5;margin-top:3px}
 #indscroll{position:absolute;inset:0;overflow:hidden;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
 #indscroll:active{cursor:grabbing}
-#indinner{position:absolute;left:0;top:0;transform-origin:0 0;display:flex;gap:64px;align-items:flex-start;width:max-content;padding:20px 40px 60px;will-change:transform}
+#indinner{position:absolute;left:0;top:0;transform-origin:0 0;display:flex;gap:64px;align-items:flex-start;width:max-content;padding:64px 40px 60px;will-change:transform}
 #indsvg{position:absolute;left:0;top:0;pointer-events:none;z-index:0;overflow:visible}
 #indtop{position:absolute;left:0;right:0;top:0;z-index:5;padding:calc(env(safe-area-inset-top) + 8px) var(--s3) var(--s2);background:linear-gradient(180deg,rgba(10,11,13,.96) 70%,rgba(10,11,13,0));pointer-events:none}
 #indtop>*{pointer-events:auto}
@@ -165,7 +165,7 @@ body.ind-on #cv,body.ind-on #hud,body.ind-on #ro,body.ind-on #zoombox,body.ind-o
 #indinner.lod2 .ind-colhead b{font-size:28px}
 #indinner.lod2 .ind-colhead span{display:none}
 #indinner.lod2 .ind-sub{font-size:16px}
-@media(max-width:700px){#indview.has-sel .ind-bnwrap{display:none}#indview.has-sel #indzoom{bottom:calc(58vh + 8px)}#indpanel{top:auto!important;left:0;right:0;width:auto!important;height:58vh;max-height:58vh;border-left:0!important;border-top:1px solid var(--line);border-radius:16px 16px 0 0}}
+@media(max-width:700px){#indview.has-sel .ind-bnwrap{display:none}#indview.has-sel #indzoom{bottom:calc(52vh + 8px)}#indpanel{top:auto!important;left:0;right:0;width:auto!important;height:52vh;max-height:52vh;border-left:0!important;border-top:1px solid var(--line);border-radius:16px 16px 0 0}}
 #indpanel{position:fixed;right:0;top:0;bottom:0;width:min(400px,92vw);z-index:7;background:var(--panel);border-left:1px solid var(--line);box-shadow:var(--sh);backdrop-filter:blur(14px);display:flex;flex-direction:column}
 @media (max-width:640px){#indpanel{left:0;right:0;top:auto;bottom:0;width:auto;max-height:58vh;border-left:0;border-top:1px solid var(--line)}}
 .indp-hd{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;padding:calc(env(safe-area-inset-top) + var(--s3)) var(--s4) var(--s2);border-bottom:1px solid var(--line);border-top:3px solid var(--sc,#8a9bb0)}
