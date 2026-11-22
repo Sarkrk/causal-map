@@ -107,17 +107,6 @@ export function initIndustry(opts) {
     });
     head.appendChild(strip);
 
-    const macro = document.createElement('div');
-    macro.className = 'ind-macro';
-    macro.innerHTML = '<span class="ind-macro-t">거시 요인 (클릭하면 인과 지도로):</span>';
-    for (const n of g.macro_overlay || []) {
-      const b = document.createElement('button');
-      b.className = 'chip';
-      b.textContent = n;
-      b.addEventListener('click', () => jumpCausal(n));
-      macro.appendChild(b);
-    }
-    head.appendChild(macro);
     view.appendChild(head);
 
     // 평면 맵: 단계 컬럼 + SVG 연결
@@ -182,7 +171,18 @@ export function initIndustry(opts) {
       el.addEventListener('click', () => { select(b.companies[0]); toast(b.title + ': ' + b.desc); });
       bn.appendChild(el);
     }
-    view.appendChild(bn);
+    const bnWrap = document.createElement('div');
+    bnWrap.className = 'ind-bnwrap';
+    const bnBtn = document.createElement('button');
+    bnBtn.className = 'ind-bntoggle';
+    bnBtn.textContent = '⚠ 병목 ' + (g.bottlenecks || []).length + '건 보기';
+    bnBtn.addEventListener('click', () => {
+      const on = bnWrap.classList.toggle('open');
+      bnBtn.textContent = on ? '⚠ 병목 닫기' : '⚠ 병목 ' + (g.bottlenecks || []).length + '건 보기';
+    });
+    bnWrap.appendChild(bnBtn);
+    bnWrap.appendChild(bn);
+    view.appendChild(bnWrap);
 
     // 상세 패널
     const panel = document.createElement('div');

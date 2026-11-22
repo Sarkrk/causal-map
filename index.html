@@ -111,7 +111,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 /* 산업 지도(11/23) — 평면 밸류체인 맵 */
 body.ind-on #cv,body.ind-on #hud,body.ind-on #ro,body.ind-on #zoombox,body.ind-on #zc,body.ind-on #stat,body.ind-on #sw,body.ind-on #fb,body.ind-on #ns,body.ind-on #fs{display:none}
 #indview{position:fixed;inset:0;z-index:6;display:flex;flex-direction:column;background:radial-gradient(ellipse at 50% 42%,#17181c 0%,#0e0f12 55%,#070708 100%);overflow:hidden}
-#indview[hidden]{display:none}
+#indview[hidden],#indpanel[hidden]{display:none!important}
 #indhead{padding:calc(env(safe-area-inset-top) + 64px) var(--s4) var(--s2);overflow-y:auto;max-height:44vh;flex:none}
 #indhead h1{font-size:var(--f4);margin:0 0 var(--s2)}
 .ind-intro{color:#c3c6cc;font-size:14px;line-height:1.65;margin:0 0 var(--s3)}
@@ -124,7 +124,7 @@ body.ind-on #cv,body.ind-on #hud,body.ind-on #ro,body.ind-on #zoombox,body.ind-o
 .ind-arrow{align-self:center;color:#fff;font-size:18px;flex:none}
 .ind-macro{display:flex;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;gap:6px;align-items:center;margin-top:var(--s2)}
 .ind-macro-t{color:#b4b7be;font-size:12px}
-#indscroll{flex:1;overflow:auto;position:relative;padding:var(--s2) var(--s4) 30px}
+#indscroll{flex:1;overflow:auto;position:relative;padding:var(--s2) var(--s4) 60px}
 #indinner{position:relative;display:flex;gap:56px;align-items:flex-start;width:max-content;min-width:100%}
 #indsvg{position:absolute;left:0;top:0;pointer-events:none;z-index:0;overflow:visible}
 .ind-col{position:relative;z-index:1;width:240px;flex:none;display:flex;flex-direction:column;gap:6px}
@@ -145,11 +145,16 @@ body.ind-on #cv,body.ind-on #hud,body.ind-on #ro,body.ind-on #zoombox,body.ind-o
 .ind-card.rel{border-color:var(--accln)}
 .ind-card.dim{opacity:.18}
 .ind-cand{position:absolute;right:6px;top:6px;font-style:normal;font-size:9px;color:var(--mu);border:1px solid var(--line);border-radius:6px;padding:1px 4px}
+.ind-bnwrap{position:absolute;left:0;bottom:0;z-index:5;display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:0 var(--s3) calc(env(safe-area-inset-bottom) + var(--s3));pointer-events:none;max-width:100%}
+.ind-bnwrap>*{pointer-events:auto}
+.ind-bntoggle{border:1px solid #ffc247;background:rgba(20,21,24,.92);color:#ffc247;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.ind-bnwrap:not(.open) .ind-bns{display:none}
+.ind-bnwrap .ind-bns{padding:0;max-width:calc(100vw - 24px);background:rgba(20,21,24,.95);border-radius:var(--r)}
 .ind-bns{flex:none;display:flex;gap:8px;overflow-x:auto;padding:var(--s2) var(--s4) calc(env(safe-area-inset-bottom) + var(--s2))}
 .ind-bn{flex:none;max-width:280px;text-align:left;border:1px solid var(--line);border-left:3px solid #ffc247;background:var(--card);border-radius:var(--r);padding:8px 10px;color:var(--tx);cursor:pointer}
 .ind-bn b{display:block;font-size:var(--f2)}
 .ind-bn span{display:block;color:var(--mu);font-size:var(--f1);line-height:1.5;margin-top:3px}
-@media(max-width:700px){#indpanel{top:auto!important;left:0;right:0;width:auto!important;height:40vh;border-left:0!important;border-top:1px solid var(--line);border-radius:16px 16px 0 0}#indview.has-sel #indscroll{padding-bottom:42vh}#indview.has-sel .ind-bns{display:none}#indview.has-sel #indhead{max-height:22vh}}
+@media(max-width:700px){#indpanel{top:auto!important;left:0;right:0;width:auto!important;height:40vh;border-left:0!important;border-top:1px solid var(--line);border-radius:16px 16px 0 0}#indview.has-sel #indscroll{padding-bottom:42vh}#indview.has-sel .ind-bnwrap{display:none}#indview.has-sel #indhead{max-height:22vh}}
 #indpanel{position:fixed;right:0;top:0;bottom:0;width:min(400px,92vw);z-index:7;background:var(--panel);border-left:1px solid var(--line);box-shadow:var(--sh);backdrop-filter:blur(14px);display:flex;flex-direction:column}
 @media (max-width:640px){#indpanel{left:0;right:0;top:auto;bottom:0;width:auto;max-height:58vh;border-left:0;border-top:1px solid var(--line)}}
 .indp-hd{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;padding:calc(env(safe-area-inset-top) + var(--s3)) var(--s4) var(--s2);border-bottom:1px solid var(--line);border-top:3px solid var(--sc,#8a9bb0)}
