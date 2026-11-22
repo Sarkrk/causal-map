@@ -215,12 +215,37 @@ export function initIndustry(opts) {
         if (ch.to === id) rel.add(ch.from);
       }
     }
+    const upSet = new Set();
+    const downSet = new Set();
+    if (id) {
+      const c0 = g.companies.find((x) => x.id === id);
+      if (c0) {
+        c0.supplies_to.forEach((t) => downSet.add(t));
+        c0.sourced_from.forEach((t) => upSet.add(t));
+      }
+      for (const ch of g.chains) {
+        if (ch.from === id) downSet.add(ch.to);
+        if (ch.to === id) upSet.add(ch.from);
+      }
+    }
     for (const [cid, card] of cards) {
+      card.classList.toggle('up', !!id && upSet.has(cid) && cid !== id);
+      card.classList.toggle('down', !!id && downSet.has(cid) && cid !== id);
       card.classList.toggle('sel', cid === id);
       card.classList.toggle('rel', !!id && rel.has(cid) && cid !== id);
       card.classList.toggle('dim', !!id && !rel.has(cid));
     }
     const panel = byId('indpanel');
+    byId('indview').classList.toggle('has-sel', !!id);
+    if (id && scroll) {
+      // 선택 카드를 지도 영역 위쪽·왼쪽에 맞춘다(아래 시트에 가리지 않게). 바깥 컨테이너는 건드리지 않음.
+      const card = cards.get(id);
+      if (card) {
+        const cr = card.getBoundingClientRect();
+        const sr = scroll.getBoundingClientRect();
+        scroll.scrollTo({ top: Math.max(0, scroll.scrollTop + (cr.top - sr.top) - 12), left: Math.max(0, scroll.scrollLeft + (cr.left - sr.left) - 12), behavior: 'smooth' });
+      }
+    }
     if (!id) { panel.hidden = true; drawLines(); return; }
     const c = g.companies.find((x) => x.id === id);
     if (!c) return;
@@ -406,7 +431,7 @@ export function initIndustry(opts) {
     svg.setAttribute('height', String(H));
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     // 기존 선 제거(defs 보존)
-    for (const el of [...svg.querySelectorAll('path.ind-line')]) el.remove();
+    for (const el of [...svg.querySelectorAll('.ind-line')]) el.remove();
     const base = inner.getBoundingClientRect();
     /** @param {string} id */
     const pos = (id) => {
@@ -415,12 +440,23 @@ export function initIndustry(opts) {
       const r = el.getBoundingClientRect();
       return { l: r.left - base.left, r: r.right - base.left, t: r.top - base.top, b: r.bottom - base.top, cy: r.top - base.top + r.height / 2 };
     };
-    for (const ch of data.chains) {
+    const stColor = (/** @type {string} */ cid) => {
+      const c = data.companies.find((x) => x.id === cid);
+      const st = c && data.stages.find((x) => x.id === c.stage);
+      return (st && st.color) || '#c8d6e8';
+    };
+    const NS = 'http://www.w3.org/2000/svg';
+    /** @type {SVGElement[]} */
+    const labels = [];
+    // 선택 안 한 선 먼저, 활성 선은 위에 그린다.
+    const order = [...data.chains].sort((x, y) => Number(sel && (x.from === sel || x.to === sel)) - Number(sel && (y.from === sel || y.to === sel)));
+    for (const ch of order) {
       const a = pos(ch.from);
       const b = pos(ch.to);
       if (!a || !b) continue;
       const active = !!sel && (ch.from === sel || ch.to === sel);
       const dim = !!sel && !active;
+      const down = ch.from === sel; // 선택 기업이 납품하는 쪽(하류)
       const fwd = b.l >= a.r;
       const x1 = fwd ? a.r : a.l;
       const x2 = fwd ? b.l : b.r;
@@ -429,17 +465,37 @@ export function initIndustry(opts) {
       const dx = Math.max(40, Math.abs(x2 - x1) * 0.45);
       const c1x = fwd ? x1 + dx : x1 - dx;
       const c2x = fwd ? x2 - dx : x2 + dx;
-      const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const p = document.createElementNS(NS, 'path');
       p.setAttribute('class', 'ind-line');
       p.setAttribute('d', `M${x1},${y1} C${c1x},${y1} ${c2x},${y2} ${x2},${y2}`);
       p.setAttribute('fill', 'none');
-      const col = active ? (data.stages.find((s) => s.id === (data.companies.find((c) => c.id === sel) || {}).stage) || {}).color || '#c8d6e8' : '#c8d6e8';
+      p.setAttribute('stroke-linecap', 'round');
+      // 평소: 출발 단계 색(분기가 어느 단계에서 갈라지는지 보이게). 선택 시: 상류 민트 / 하류 호박색.
+      const col = active ? (down ? '#ffc247' : '#5eead4') : stColor(ch.from);
       p.setAttribute('stroke', col);
-      p.setAttribute('stroke-width', active ? '2.2' : '1.3');
-      p.setAttribute('opacity', dim ? '0.05' : active ? '0.9' : '0.28');
-      if (active) p.setAttribute('marker-end', 'url(#indah)');
+      p.setAttribute('stroke-width', active ? '3' : '1.8');
+      p.setAttribute('opacity', dim ? '0.06' : active ? '0.95' : '0.5');
+      p.setAttribute('marker-end', 'url(#indah)');
       svg.appendChild(p);
+      if (active && ch.what) {
+        const mx = (x1 + x2) / 2;
+        const my = (y1 + y2) / 2;
+        const t = document.createElementNS(NS, 'text');
+        t.setAttribute('class', 'ind-line');
+        t.setAttribute('x', String(mx));
+        t.setAttribute('y', String(my - 4));
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('fill', col);
+        t.setAttribute('font-size', '11');
+        t.setAttribute('font-weight', '700');
+        t.setAttribute('stroke', '#0a0b0d');
+        t.setAttribute('stroke-width', '3');
+        t.setAttribute('paint-order', 'stroke');
+        t.textContent = ch.what;
+        labels.push(t);
+      }
     }
+    labels.forEach((t) => svg.appendChild(t));
   }
 
   return { toggle, isOn: () => on };
