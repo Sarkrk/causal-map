@@ -111,6 +111,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 /* 산업 지도(11/23) — 평면 밸류체인 맵 */
 body.ind-on #cv,body.ind-on #hud,body.ind-on #ro,body.ind-on #zoombox,body.ind-on #zc,body.ind-on #stat,body.ind-on #sw,body.ind-on #fb,body.ind-on #ns,body.ind-on #fs{display:none}
 #indview{position:fixed;inset:0;z-index:6;display:flex;flex-direction:column;background:radial-gradient(ellipse at 50% 42%,#17181c 0%,#0e0f12 55%,#070708 100%);overflow:hidden}
+#indview[hidden]{display:none}
 #indhead{padding:calc(env(safe-area-inset-top) + 64px) var(--s4) var(--s2);overflow-y:auto;max-height:44vh;flex:none}
 #indhead h1{font-size:var(--f4);margin:0 0 var(--s2)}
 .ind-intro{color:var(--mu);font-size:var(--f2);line-height:1.65;margin:0 0 var(--s3)}
