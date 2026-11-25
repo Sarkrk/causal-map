@@ -1,13 +1,15 @@
 // @ts-check
-// graph.json 마이그레이션: v0(구 형식, schemaVersion 없음) → v1 → v2. 입력 객체는 변경하지 않는다.
+// graph.json 마이그레이션: v0(구 형식, schemaVersion 없음) → v1 → v2 → v3. 입력 객체는 변경하지 않는다.
 
-import { LAGS, REGIMES } from './v2.js';
+import { LAGS, REGIMES, TIERS } from './v3.js';
 
 /** @typedef {import('../types.js').GraphData} GraphData */
 /** @typedef {import('../types.js').Lag} Lag */
+/** @typedef {import('../types.js').Tier} Tier */
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 const V1 = 1;
+const V2 = 2;
 
 /**
  * 구 형식(v0)의 evidence 문자열을 배열로 바꾼다.
@@ -113,13 +115,10 @@ function monthsToLag(m) {
   return 'long';
 }
 
-// 숫자+단위. 뒤에 붙는 말로 '10년물·5년 BEI·3개월 평균' 같은 만기/평균 표기는 거른다(시차가 아님).
 const NUM_UNIT = /(\d+(?:\.\d+)?)(?:\s*[~∼-]\s*(\d+(?:\.\d+)?))?\s*(개월|분기|년)(?!\s*(?:물|만기|금리|국채|BEI|평균|이동|누적|수익률|이후|이전|대비|간|말|초|전|래|치|기준|동안|연속|구간|단위))/g;
-// 숫자는 시차 단서어가 같은 구절(앞뒤 8자)에 있을 때만 시차로 본다('30년 고정 모기지', '6개월 패널'은 시차가 아님).
 const LAG_CUE = /선행|후행|시차|지연|래그|lag|걸려|걸린|소요|뒤|후에|이내|파급|전가|반영|시차|뒤늦/i;
 const CUE_SPAN = 8;
 const IMMEDIATE_KW = /즉시|당일|동행|같은\s*달/;
-// '단기금리·장기물·장기 JGB'처럼 기간 라벨이 아니라 자산/개념 이름의 일부인 경우는 제외한다.
 const NOUNISH = '(?:금리|물|채|국채|채권|기대|BEI|JGB|CDS|\\(|부채|차입|자금|예금|변동|투자|유동|CP|외채|조달|계약|전망|평균|추세|성장|지속|보유|실업|임대|이자|가격|스프레드|프리미엄|균형|중립|과거|구조|저축|인플레|기조|재정|목표)';
 const SHORT_KW = new RegExp(`단기(?!\\s*${NOUNISH})`);
 const MID_KW = new RegExp(`중기(?!\\s*${NOUNISH})`);
@@ -127,8 +126,6 @@ const LONG_KW = new RegExp(`장기(?!\\s*${NOUNISH})`);
 
 /**
  * 한국어 설명 문장에서 시차 분류를 뽑는다. 단서가 없거나 서로 다른 값이 충돌하면 null.
- * 예: '즉시'→immediate, '3개월'→short, '약 4분기'→medium, '2년'→long, '단기'→short.
- * 이미 enum 값('short' 등)이면 그대로 돌려준다.
  * @param {unknown} text
  * @returns {Lag|null}
  */
@@ -139,7 +136,6 @@ export function parseLag(text) {
   if (LAGS.includes(/** @type {Lag} */ (t))) return /** @type {Lag} */ (t);
   /** @type {Set<Lag>} */
   const found = new Set();
-  // 4자리+년('2026년', '2015년 이후')은 날짜이므로 먼저 지운다.
   const s = t.replace(/\d{4}\s*년/g, ' ').replace(/(?:단기|중기|장기)\([^)]*\)/g, ' ');
   for (const m of s.matchAll(NUM_UNIT)) {
     const i = m.index ?? 0;
@@ -158,8 +154,6 @@ export function parseLag(text) {
   return onlyOne(found);
 }
 
-// 국면 단어는 '위기 시·긴축 국면·인상기'처럼 국면을 가리키는 접미가 붙을 때만 인정한다
-// ('긴축경로 기대'는 노드명, '규제완화 기대'·'변동성 완화'는 국면이 아님).
 const SUF = '(?:\\s*(?:국면|구간|환경|시기|기간|하에서|중|때)|\\s*시(?![가-힣])|\\s*주(?![가-힣])|기(?:에는|에서|에|엔|의|는|(?![가-힣])))';
 /** @type {[string, RegExp][]} */
 const REGIME_KW = [
@@ -172,8 +166,7 @@ const REGIME_KW = [
 ];
 
 /**
- * 문장에서 활성 국면(정규 어휘)을 뽑는다. 단서가 없거나 서로 다른 국면이 둘 이상이면 null
- * (후자는 'A 시 +, B 시 −'처럼 엣지를 국면별로 쪼개야 하는 경우).
+ * 문장에서 활성 국면(정규 어휘)을 뽑는다. 단서가 없거나 서로 다른 국면이 둘 이상이면 null.
  * @param {unknown} text
  * @returns {string|null}
  */
@@ -183,7 +176,6 @@ export function parseRegime(text) {
   if (REGIMES.includes(t)) return t;
   /** @type {Set<string>} */
   const found = new Set();
-  // 규제·한도 얘기의 '완화/강화'는 통화 국면이 아니다.
   const regulatory = /규제|한도/.test(t);
   for (const [name, re] of REGIME_KW) {
     if (regulatory && (name === 'easing' || name === 'tightening')) continue;
@@ -194,9 +186,8 @@ export function parseRegime(text) {
 
 /**
  * v1 → v2. 입력은 변경하지 않고 새 객체를 반환한다.
- * lag: 기존 lag 문자열 → note+cond 순으로 파싱. regime: 기존 regime → cond+note 파싱(없으면 null).
  * @param {Record<string, any>} v1
- * @returns {GraphData}
+ * @returns {Record<string, any>}
  */
 export function migrateV1toV2(v1) {
   /** @param {unknown} x */
@@ -204,27 +195,120 @@ export function migrateV1toV2(v1) {
   const edges = Array.isArray(v1.edges)
     ? v1.edges.map((/** @type {unknown} */ e) => {
         if (!isObj(e)) return e;
-        // 기존 lag 필드 문장('약 2개월')은 그 자체가 시차 표기이므로 단서어를 붙여 파싱한다.
         const lag = parseLag(e.lag) ?? parseLag(`${str(e.lag)} 시차`) ?? parseLag(`${str(e.note)} | ${str(e.cond)}`);
         const regime = parseRegime(e.regime) ?? parseRegime(`${str(e.cond)} | ${str(e.note)}`);
         return { ...e, lag, regime };
       })
     : v1.edges;
-  return /** @type {GraphData} */ (/** @type {unknown} */ ({
+  return {
     ...v1,
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: V2,
     meta: isObj(v1.meta) ? { ...v1.meta } : v1.meta,
     nodes: Array.isArray(v1.nodes) ? v1.nodes.map((/** @type {unknown} */ n) => (isObj(n) ? { ...n } : n)) : v1.nodes,
     edges,
     cors: Array.isArray(v1.cors) ? v1.cors.map((/** @type {unknown} */ c) => (isObj(c) ? { ...c } : c)) : v1.cors,
+  };
+}
+
+// ---- v2 → v3: tier 자동 산출(미지정 노드만 폴백) ----
+
+/**
+ * v2 노드·엣지에서 티어 폴백을 산출한다(순수 함수).
+ * - core: series가 있고 차수 >= 3인 노드. (만약 그런 노드가 0개면 차수 > 0인 노드를 core로)
+ * - bridge: core의 1-hop 이웃
+ * - econ: 나머지
+ * @param {unknown[]} nodes
+ * @param {unknown[]} edges
+ * @returns {Map<string, Tier>}
+ */
+export function inferTiers(nodes, edges) {
+  /** @type {Map<string, number>} */
+  const deg = new Map();
+  /** @type {Map<string, Set<string>>} */
+  const adj = new Map();
+  for (const n of nodes) {
+    if (isObj(n) && typeof n.id === 'string') {
+      deg.set(n.id, 0);
+      adj.set(n.id, new Set());
+    }
+  }
+  for (const e of edges) {
+    if (!isObj(e) || typeof e.src !== 'string' || typeof e.dst !== 'string') continue;
+    if (deg.has(e.src)) deg.set(e.src, (deg.get(e.src) ?? 0) + 1);
+    if (deg.has(e.dst)) deg.set(e.dst, (deg.get(e.dst) ?? 0) + 1);
+    adj.get(e.src)?.add(e.dst);
+    adj.get(e.dst)?.add(e.src);
+  }
+  /** @type {Set<string>} */
+  const core = new Set();
+  for (const n of nodes) {
+    if (!isObj(n) || typeof n.id !== 'string') continue;
+    if (typeof n.series === 'string' && n.series.trim() !== '' && (deg.get(n.id) ?? 0) >= 3) {
+      core.add(n.id);
+    }
+  }
+  if (core.size === 0) {
+    for (const [id, d] of deg) if (d > 0) core.add(id);
+  }
+  /** @type {Map<string, Tier>} */
+  const out = new Map();
+  for (const n of nodes) {
+    if (!isObj(n) || typeof n.id !== 'string') continue;
+    if (core.has(n.id)) out.set(n.id, 'core');
+    else {
+      const nb = adj.get(n.id);
+      let isBridge = false;
+      if (nb) {
+        for (const x of nb) {
+          if (core.has(x)) {
+            isBridge = true;
+            break;
+          }
+        }
+      }
+      out.set(n.id, isBridge ? 'bridge' : 'econ');
+    }
+  }
+  return out;
+}
+
+/**
+ * v2 → v3. 입력은 변경하지 않고 새 객체를 반환한다.
+ * 이미 유효한 node.tier가 있으면 유지하고, 없으면 inferTiers 폴백을 채운다.
+ * @param {Record<string, any>} v2
+ * @returns {GraphData}
+ */
+export function migrateV2toV3(v2) {
+  const rawNodes = Array.isArray(v2.nodes) ? v2.nodes : [];
+  const rawEdges = Array.isArray(v2.edges) ? v2.edges : [];
+  const inferred = inferTiers(rawNodes, rawEdges);
+  const nodes = Array.isArray(v2.nodes)
+    ? v2.nodes.map((/** @type {unknown} */ n) => {
+        if (!isObj(n)) return n;
+        const hasTier = typeof n.tier === 'string' && TIERS.includes(/** @type {Tier} */ (n.tier));
+        const tier = hasTier ? n.tier : (inferred.get(n.id) ?? 'econ');
+        return { ...n, tier };
+      })
+    : v2.nodes;
+  const edges = Array.isArray(v2.edges) ? v2.edges.map((/** @type {unknown} */ e) => (isObj(e) ? { ...e } : e)) : v2.edges;
+  const cors = Array.isArray(v2.cors) ? v2.cors.map((/** @type {unknown} */ c) => (isObj(c) ? { ...c } : c)) : v2.cors;
+  const meta = isObj(v2.meta) ? { ...v2.meta } : v2.meta;
+  return /** @type {GraphData} */ (/** @type {unknown} */ ({
+    ...v2,
+    schemaVersion: SCHEMA_VERSION,
+    meta,
+    nodes,
+    edges,
+    cors,
   }));
 }
 
 /**
- * graph.json 원본을 v2 GraphData로 바꾼다.
- * - schemaVersion 없음 → v0 → v1 → v2 (새 객체).
- * - schemaVersion 1 → v2 (새 객체).
- * - schemaVersion 2 → 그대로 반환(같은 객체).
+ * graph.json 원본을 v3 GraphData로 바꾼다.
+ * - schemaVersion 없음 → v0 → v1 → v2 → v3 (새 객체).
+ * - schemaVersion 1 → v2 → v3 (새 객체).
+ * - schemaVersion 2 → v3 (새 객체).
+ * - schemaVersion 3 → 그대로 반환(같은 객체).
  * - 그 밖(예: 99) → Error('unsupported schemaVersion N') throw.
  * @param {unknown} raw
  * @returns {GraphData}
@@ -232,8 +316,9 @@ export function migrateV1toV2(v1) {
 export function migrate(raw) {
   if (!isObj(raw)) throw new TypeError('graph data must be an object');
   const v = raw.schemaVersion;
-  if (v === undefined || v === null) return migrateV1toV2(migrateV0(raw));
-  if (v === V1) return migrateV1toV2(raw);
+  if (v === undefined || v === null) return migrateV2toV3(migrateV1toV2(migrateV0(raw)));
+  if (v === V1) return migrateV2toV3(migrateV1toV2(raw));
+  if (v === V2) return migrateV2toV3(raw);
   if (v === SCHEMA_VERSION) return /** @type {GraphData} */ (/** @type {unknown} */ (raw));
   throw new Error(`unsupported schemaVersion ${String(v)}`);
 }

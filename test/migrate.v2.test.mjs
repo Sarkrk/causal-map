@@ -111,23 +111,25 @@ test('migrateV1toV2: 입력을 변경하지 않고 새 객체를 반환', () => 
   };
   deepFreeze(frozen);
   const out2 = migrate(frozen); // 동결된 객체를 건드리면 strict mode(ESM)에서 TypeError
-  assert.equal(out2.schemaVersion, 2);
+  assert.equal(out2.schemaVersion, 3);
   assert.equal(JSON.stringify(v1), before);
   assert.notEqual(out2.edges, frozen.edges);
   assert.notEqual(out2.edges[0], frozen.edges[0]);
   assert.notEqual(out2.meta, frozen.meta);
 });
 
-test('migrate: v2 입력은 같은 객체, v1→v2→v2 멱등', () => {
+test('migrate: v3 입력은 같은 객체, v1→v3→v3 멱등', () => {
   const a = migrate(v1);
   assert.equal(migrate(a), a);
   assert.deepEqual(migrate(migrate(v1)), a);
-  assert.equal(migrate(v2fx), v2fx);
+  const v3 = migrate(v2fx);
+  assert.equal(v3.schemaVersion, 3);
+  assert.equal(migrate(v3), v3);
 });
 
-test('migrate: v0 → v2 직행, v0→v1→v2와 같은 결과', () => {
+test('migrate: v0 → v3 직행, v0→v1→v2→v3와 같은 결과', () => {
   const g = migrate(v0);
-  assert.equal(g.schemaVersion, 2);
+  assert.equal(g.schemaVersion, 3);
   assert.equal(validateGraph(g).ok, true);
   assert.deepEqual(g.edges.map((e) => [e.id, e.lag, e.regime]), migrate(v1).edges.map((e) => [e.id, e.lag, e.regime]));
 });
@@ -165,7 +167,7 @@ test('validate: v1 데이터를 직접 넣으면 "migrate 먼저" 오류', () =>
 });
 
 test('validate: lag enum 위반 → 오류, null 허용', () => {
-  const g = structuredClone(v2fx);
+  const g = structuredClone(migrate(v2fx));
   g.edges[0].lag = 'soon';
   const r = validateGraph(g);
   assert.equal(r.ok, false);
@@ -175,7 +177,7 @@ test('validate: lag enum 위반 → 오류, null 허용', () => {
 });
 
 test('validate: regime — 문자열 아니면 오류, 어휘 밖이면 warning', () => {
-  const g = structuredClone(v2fx);
+  const g = structuredClone(migrate(v2fx));
   g.edges[0].regime = 'bubble';
   let r = validateGraph(g);
   assert.equal(r.ok, true, r.errors.join('\n'));
@@ -186,39 +188,40 @@ test('validate: regime — 문자열 아니면 오류, 어휘 밖이면 warning'
   assert.ok(r.errors.some((m) => m.includes('edge F1: regime must be a string or null')));
 });
 
-test('validate: schemaVersion 3 → 오류', () => {
-  const g = { ...structuredClone(v2fx), schemaVersion: 3 };
+test('validate: schemaVersion 4 → 오류', () => {
+  const g = { ...structuredClone(migrate(v2fx)), schemaVersion: 4 };
   assert.equal(validateGraph(g).ok, false);
 });
 
-test('validate: 입력 비변경(v2)', () => {
-  const g = structuredClone(v2fx);
+test('validate: 입력 비변경(v3)', () => {
+  const g = structuredClone(migrate(v2fx));
   g.edges[0].regime = 'bubble';
   const before = JSON.stringify(g);
   validateGraph(g);
   assert.equal(JSON.stringify(g), before);
 });
 
-test('픽스처 graph.v2.json: 검증 통과, 구조 요건(R·B 루프, 공통원인, cors, regime 엣지 2)', () => {
-  const r = validateGraph(v2fx);
+test('픽스처 graph.v2.json: migrate→검증 통과, 구조 요건(R·B 루프, 공통원인, cors, regime 엣지 2)', () => {
+  const v3 = migrate(v2fx);
+  const r = validateGraph(v3);
   assert.deepEqual(r.errors, []);
   assert.deepEqual(r.warnings, []);
-  assert.equal(v2fx.cors.length, 1);
-  const withRegime = v2fx.edges.filter((e) => e.regime);
+  assert.equal(v3.cors.length, 1);
+  const withRegime = v3.edges.filter((e) => e.regime);
   assert.equal(withRegime.length, 2);
-  const sg = (/** @type {string} */ id) => v2fx.edges.find((e) => e.id === id)?.sign;
+  const sg = (/** @type {string} */ id) => v3.edges.find((e) => e.id === id)?.sign;
   // R 루프 F1→F2→F3: 음수 0개, B 루프 F4→F5→F6: 음수 1개
   assert.deepEqual(['F1', 'F2', 'F3'].map(sg), ['+', '+', '+']);
   assert.equal(['F4', 'F5', 'F6'].filter((id) => sg(id) === '-').length, 1);
   // 공통원인: 위험심리 → 주가, 환율
-  assert.deepEqual(v2fx.edges.filter((e) => e.src === '위험심리' && ['주가', '환율'].includes(e.dst)).length, 2);
-  assert.ok(!v2fx.edges.some((e) => (e.src === '주가' && e.dst === '환율') || (e.src === '환율' && e.dst === '주가')));
+  assert.deepEqual(v3.edges.filter((e) => e.src === '위험심리' && ['주가', '환율'].includes(e.dst)).length, 2);
+  assert.ok(!v3.edges.some((e) => (e.src === '주가' && e.dst === '환율') || (e.src === '환율' && e.dst === '주가')));
 });
 
 test('schema.json과 코드의 enum·버전 일치', () => {
   const edgeProps = schema.properties.edges.items.properties;
-  assert.equal(schema.$id, 'graph.v2.json');
-  assert.equal(schema.properties.schemaVersion.const, 2);
+  assert.equal(schema.$id, 'graph.v3.json');
+  assert.equal(schema.properties.schemaVersion.const, 3);
   assert.deepEqual(edgeProps.lag.enum.filter((/** @type {any} */ x) => x !== null), LAGS);
   assert.ok(edgeProps.lag.enum.includes(null));
   assert.deepEqual(edgeProps.regime.type, ['string', 'null']);
@@ -226,7 +229,7 @@ test('schema.json과 코드의 enum·버전 일치', () => {
   assert.deepEqual(Object.keys(LAG_MONTHS), LAGS);
   // 필수 키가 validate.js의 EDGE_REQUIRED와 같은 효과: 필수 키 하나를 빼면 오류
   for (const k of schema.properties.edges.items.required) {
-    const g = structuredClone(v2fx);
+    const g = structuredClone(migrate(v2fx));
     delete g.edges[0][k];
     assert.equal(validateGraph(g).ok, false, `missing ${k}`);
   }

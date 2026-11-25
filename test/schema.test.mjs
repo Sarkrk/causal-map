@@ -53,10 +53,10 @@ test('migrate(v0) 결과가 graph.v1.json 픽스처와 일치', () => {
   assert.deepEqual(g.meta, v1.meta);
 });
 
-test('migrate(v1)는 새 v2 객체를 반환하고 검증 통과', () => {
+test('migrate(v1)는 새 v3 객체를 반환하고 검증 통과', () => {
   const out = migrate(v1);
   assert.notEqual(out, v1);
-  assert.equal(out.schemaVersion, 2);
+  assert.equal(out.schemaVersion, SCHEMA_VERSION);
   assert.equal(validateGraph(out).ok, true);
 });
 

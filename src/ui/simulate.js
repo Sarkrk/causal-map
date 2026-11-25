@@ -32,6 +32,7 @@ export const SCORE_NOTE = '경로 수·근거 등급을 합친 상대 크기, �
 export const WARN_LABEL = {
   'loop-R': { text: '강화 루프', color: '#f7768e' },
   'loop-B': { text: '균형 루프', color: '#7aa2f7' },
+  'edge-flag': { text: '고리 주의', color: '#ff9e64' },
   confounder: { text: '공통원인 가능', color: '#e0af68' },
   'correlation-only': { text: '상관만 있음(인과 아님)', color: '#3fb6c9' },
 };

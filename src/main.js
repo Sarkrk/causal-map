@@ -68,6 +68,7 @@ async function boot() {
     sectors: sectorsPresent(graph),
     flv: byId('flv'),
     fsec: byId('fsec'),
+    ftier: document.getElementById('ftier'),
     thrEl: /** @type {HTMLInputElement} */ (byId('thr')),
     thrv: byId('thrv'),
     reset: byId('freset'),
@@ -80,6 +81,7 @@ async function boot() {
       torp: byId('torp'),
       tspin: byId('tspin'),
       twob: byId('twob'),
+      tstate: document.getElementById('tstate'),
     },
   });
   byId('trel').addEventListener('click', () => canvas.reseed());
@@ -105,8 +107,10 @@ async function boot() {
     indBtn.addEventListener('click', () => industry.toggle());
   }
 
-  // 왼쪽 아래 상태줄: 데이터 규모를 항상 한 줄로 보여준다(시트를 열지 않아도 보이게).
-  stat.textContent = `노드 ${graph.nodes.length.toLocaleString('ko-KR')} · 관계선 ${graph.edges.length.toLocaleString('ko-KR')}`;
+  // 왼쪽 아래 상태줄: 데이터 규모 + 활성 국면(v3)을 한 줄로 보여준다.
+  const mr = data.meta?.marketRegime;
+  const regPart = mr && mr.label ? ` · ${mr.label}` : '';
+  stat.textContent = `노드 ${graph.nodes.length.toLocaleString('ko-KR')} · 관계선 ${graph.edges.length.toLocaleString('ko-KR')}${regPart}`;
 
   initUpdate({
     meta: data.meta || {},

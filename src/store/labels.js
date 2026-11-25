@@ -50,6 +50,31 @@ export const LEVEL_TEXT = { A: 'A 확실', B: 'B 유력', C: 'C 후보', D: 'D �
 /** @type {string[]} 등급 전체 */
 export const LEVELS = ['A', 'B', 'C', 'D'];
 
+/** 노드 티어 순서(v3). */
+export const TIER_ORDER = /** @type {const} */ (['core', 'bridge', 'econ']);
+
+/** 티어 → 한글 라벨. */
+export const TIER_TEXT = /** @type {Record<string, string>} */ ({
+  core: '핵심 시장',
+  bridge: '연결 개념',
+  econ: '이론·배경',
+});
+
+/** 티어 → 배지 색. */
+export const TIER_COLOR = /** @type {Record<string, string>} */ ({
+  core: '#ff6b6b',
+  bridge: '#4da3ff',
+  econ: '#8a9bb0',
+});
+
+/** 엣지 구조 경고 플래그 → 배지 문구. */
+export const FLAG_TEXT = /** @type {Record<string, string>} */ ({
+  confounded: '공통원인 의심',
+  'reverse-lead': '역방향 선행',
+  'sign-mismatch': '실증부호 불일치',
+  'regime-flip': '최근 전환',
+});
+
 /**
  * 엣지 표시 등급. DB level은 A~D 그대로 두고, B만 sub('+'|'-')로 B+/B-로 나눠 쓴다.
  * sub가 없거나 B가 아니면 level을 그대로 돌려준다.

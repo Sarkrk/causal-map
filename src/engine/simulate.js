@@ -1,6 +1,7 @@
 // @ts-check
-// 충격 시뮬레이션: start에 +1/−1 충격을 주었을 때 단순 경로 전파로 각 노드의 방향·크기를 추정한다.
+// 충격 시뮬레이션(v3): start에 +1/−1 충격을 주었을 때 단순 경로 전파로 각 노드의 방향·크기를 추정한다.
 // 순수 함수. 입력 graph는 변경하지 않는다. 상관(cors)은 전파에 쓰지 않고 경고에만 쓴다.
+// v3: B+/B- 차등 가중치, 구조 경고(confounded/sign-mismatch) 0.7 감쇠, 1차 채널별 이중계상 보정(aggMode='dedup' 기본).
 
 /** @typedef {import('../types.js').Graph} Graph */
 /** @typedef {import('../types.js').EdgeData} EdgeData */
@@ -13,11 +14,10 @@
 /** @typedef {import('../types.js').SimWarning} SimWarning */
 /** @typedef {import('../types.js').SimResult} SimResult */
 import { cmpStr, compareCycles, findLoops } from './cycles.js';
-import { gradeOf } from './graph.js';
-import { compareScored, scorePath, signProduct } from './paths.js';
+import { scorePath, signProduct } from './paths.js';
 import { regimeFilter } from './regime.js';
 import { upstream } from './traverse.js';
-import { LAG_MONTHS, LEVEL_WEIGHT } from '../schema/v2.js';
+import { LAG_MONTHS, edgeWeight } from '../schema/v3.js';
 
 const DEFAULT_DEPTH = 4;
 const MAX_DEPTH = 6;
@@ -25,13 +25,24 @@ const DEFAULT_TOP_K = 15;
 const MAX_PATHS = 20000;
 const LOOP_MAX_LEN = 6;
 const WARN_LIMIT = 5;
-const AMBIGUOUS_RATIO = 0.1;
+const MIX_RATIO = 0.3;
+const LEGACY_AMBIGUOUS_RATIO = 0.1;
+
+const FLAG_MSG = /** @type {Record<string, string>} */ ({
+  confounded: '공통원인 의심(편상관 취약)',
+  'reverse-lead': '역방향 선행(결과가 먼저 움직임)',
+  'sign-mismatch': '실증 부호 불일치',
+  'regime-flip': '최근 관계 전환',
+});
 
 /**
  * @typedef {Object} Acc            목표 노드별 누적
  * @property {number} pos
  * @property {number} neg
  * @property {number} amb
+ * @property {Map<string, number>} posCh  1차 채널별 최강 양(+) 기여(dedup용)
+ * @property {Map<string, number>} negCh  1차 채널별 최강 음(−) 기여(dedup용)
+ * @property {Map<string, number>} ambCh  1차 채널별 최강 ± 기여(dedup용)
  * @property {number} minLag
  * @property {number} minLagKnown   lag가 모두 알려진 경로의 최소 누적 시차(없으면 Infinity)
  * @property {number} unkPaths     lag 미상 엣지를 포함한 기여 경로 수
@@ -74,10 +85,27 @@ function loopKey(nodes) {
 }
 
 /**
+ * 독립 1차 채널 기여들을 noisy-OR로 결합해 [0, 1] 범위로 포화 정규화한다.
+ * 단일 채널 [c]는 그대로 c를 돌려준다.
+ * @param {Iterable<number>} vals
+ * @returns {number}
+ */
+function combineChannels(vals) {
+  let rem = 1;
+  let any = false;
+  for (const v of vals) {
+    if (v <= 0) continue;
+    any = true;
+    const clamped = Math.min(1, v);
+    rem *= 1 - clamped;
+  }
+  return any ? 1 - rem : 0;
+}
+
+/**
  * start에 shockSign(+1/−1) 충격을 주고 활성 엣지만으로 단순 경로를 maxDepth까지 열거해 전파한다.
- * 경로 기여 = shockSign × 부호곱 × confidence(등급 가중치 곱). '±'가 낀 경로는 기여 절댓값이 ambiguousMass로 간다.
- * 활성 엣지 = regimeFilter(opts.activeRegime) ∧ opts.edgeFilter. maxDepth 기본 4·상한 6, topK 기본 15.
- * 경로 열거가 20000개에 닿으면 멈추고 truncated:true.
+ * aggMode='dedup'(기본): 같은 1차 채널(start 직후 노드) 경유 중복 우회 경로는 최댓값 1개만 채택하고,
+ * 서로 다른 1차 채널만 noisy-OR로 결합한다. 'sum'은 기존 단순 합산 호환 모드.
  * @param {Graph} g
  * @param {string} startId
  * @param {1|-1} shockSign
@@ -88,6 +116,7 @@ export function simulate(g, startId, shockSign, opts = {}) {
   const activeRegime = opts.activeRegime ?? null;
   const maxDepth = clampInt(opts.maxDepth, DEFAULT_DEPTH, 1, MAX_DEPTH);
   const topK = clampInt(opts.topK, DEFAULT_TOP_K, 1, Infinity);
+  const aggMode = opts.aggMode === 'sum' ? 'sum' : 'dedup';
   const rf = regimeFilter(activeRegime);
   const userFilter = opts.edgeFilter;
   /** @type {EdgeFilter} */
@@ -109,14 +138,15 @@ export function simulate(g, startId, shockSign, opts = {}) {
 
   /**
    * @param {string} v
-   * @param {number} conf    지금까지의 신뢰도 곱
-   * @param {number} lag     지금까지의 누적 시차(개월)
-   * @param {boolean} amb    ±가 낀 경로인가
-   * @param {number} neg     음(-) 엣지 개수
-   * @param {boolean} unk    lag 미상 엣지가 낀 경로인가
+   * @param {number} conf
+   * @param {number} lag
+   * @param {boolean} amb
+   * @param {number} neg
+   * @param {boolean} unk
+   * @param {string|null} firstHop
    * @returns {void}
    */
-  function dfs(v, conf, lag, amb, neg, unk) {
+  function dfs(v, conf, lag, amb, neg, unk, firstHop) {
     for (const e of g.outE.get(v) ?? []) {
       if (truncated) return;
       if (!active(e)) continue;
@@ -127,27 +157,39 @@ export function simulate(g, startId, shockSign, opts = {}) {
         return;
       }
       count++;
-      const c = conf * (LEVEL_WEIGHT[e.level] ?? LEVEL_WEIGHT.D);
+      const c = conf * edgeWeight(e);
       const l = lag + (e.lag == null ? 0 : (LAG_MONTHS[e.lag] ?? 0));
       const u = unk || e.lag == null;
       const a = amb || e.sign === '±';
       const n = neg + (e.sign === '-' ? 1 : 0);
+      const fh = firstHop ?? w;
       nodes.push(w);
       edges.push(e);
 
       let t = acc.get(w);
       if (!t) {
-        t = { pos: 0, neg: 0, amb: 0, minLag: Infinity, minLagKnown: Infinity, unkPaths: 0, depth: edges.length, best: [] };
+        t = {
+          pos: 0, neg: 0, amb: 0,
+          posCh: new Map(), negCh: new Map(), ambCh: new Map(),
+          minLag: Infinity, minLagKnown: Infinity, unkPaths: 0, depth: edges.length, best: [],
+        };
         acc.set(w, t);
       }
-      if (a) t.amb += c;
-      else if ((n % 2 === 0 ? 1 : -1) * shockSign > 0) t.pos += c;
-      else t.neg += c;
+      if (a) {
+        t.amb += c;
+        if (c > (t.ambCh.get(fh) ?? 0)) t.ambCh.set(fh, c);
+      } else if ((n % 2 === 0 ? 1 : -1) * shockSign > 0) {
+        t.pos += c;
+        if (c > (t.posCh.get(fh) ?? 0)) t.posCh.set(fh, c);
+      } else {
+        t.neg += c;
+        if (c > (t.negCh.get(fh) ?? 0)) t.negCh.set(fh, c);
+      }
       if (l < t.minLag) t.minLag = l;
       if (u) t.unkPaths++;
       else if (l < t.minLagKnown) t.minLagKnown = l;
       if (edges.length < t.depth) t.depth = edges.length;
-      // 기여가 가장 큰 경로 2개 유지(복사는 후보가 될 때만)
+
       const cand = { conf: c, lag: l, nodes, edges };
       const b = t.best;
       if (b.length < 2 || cmpBest(cand, b[b.length - 1]) < 0) {
@@ -158,29 +200,43 @@ export function simulate(g, startId, shockSign, opts = {}) {
 
       if (edges.length < maxDepth) {
         onPath.add(w);
-        dfs(w, c, l, a, n, u);
+        dfs(w, c, l, a, n, u, fh);
         onPath.delete(w);
       }
       nodes.pop();
       edges.pop();
     }
   }
-  dfs(startId, 1, 0, false, 0, false);
+  dfs(startId, 1, 0, false, 0, false, null);
 
   /** @type {SimImpact[]} */
   const all = [];
   for (const [id, t] of acc) {
-    const score = t.pos - t.neg;
+    const posMass = aggMode === 'dedup' ? combineChannels(t.posCh.values()) : t.pos;
+    const negMass = aggMode === 'dedup' ? combineChannels(t.negCh.values()) : t.neg;
+    const ambiguousMass = aggMode === 'dedup' ? combineChannels(t.ambCh.values()) : t.amb;
+    const score = posMass - negMass;
     const mag = Math.abs(score);
     /** @type {Sign} */
     let sign = score > 0 ? '+' : '-';
-    if (t.amb >= mag || mag < AMBIGUOUS_RATIO * (t.pos + t.neg)) sign = '±';
-    all.push({ id, score, sign, posMass: t.pos, negMass: t.neg, ambiguousMass: t.amb, minLagMonths: t.minLag, minLagKnownMonths: Number.isFinite(t.minLagKnown) ? t.minLagKnown : null, lagUnknownPaths: t.unkPaths, depth: t.depth });
+    if (aggMode === 'dedup') {
+      const hi = Math.max(posMass, negMass);
+      const lo = Math.min(posMass, negMass);
+      if (ambiguousMass >= mag || (hi > 0 && lo >= MIX_RATIO * hi)) sign = '±';
+    } else {
+      if (ambiguousMass >= mag || mag < LEGACY_AMBIGUOUS_RATIO * (posMass + negMass)) sign = '±';
+    }
+    all.push({
+      id, score, sign, posMass, negMass, ambiguousMass,
+      minLagMonths: t.minLag,
+      minLagKnownMonths: Number.isFinite(t.minLagKnown) ? t.minLagKnown : null,
+      lagUnknownPaths: t.unkPaths,
+      depth: t.depth,
+    });
   }
   all.sort((x, y) => Math.abs(y.score) - Math.abs(x.score) || cmpStr(x.id, y.id));
   const impacts = all.slice(0, topK);
 
-  // 대표 경로: 각 impact의 최상 경로 → 남는 자리에 두 번째 경로
   /** @type {Map<string, ScoredPath[]>} */
   const picked = new Map();
   let budget = topK;
@@ -219,12 +275,12 @@ function toScored(b) {
 }
 
 /**
- * 경고 생성: loop-R/B, confounder, correlation-only.
+ * 경고 생성: loop-R/B, confounder, correlation-only, edge-flag.
  * @param {Graph} g
  * @param {string} startId
  * @param {SimImpact[]} impacts
  * @param {ScoredPath[]} paths
- * @param {Map<string, Acc>} reached  start에서 도달한 모든 노드
+ * @param {Map<string, Acc>} reached
  * @param {EdgeFilter} active
  * @param {number} maxDepth
  * @returns {SimWarning[]}
@@ -233,7 +289,6 @@ function buildWarnings(g, startId, impacts, paths, reached, active, maxDepth) {
   /** @type {SimWarning[]} */
   const out = [];
 
-  // 루프: 결과 경로 위의 노드를 지나는 루프(활성 엣지만, 길이 ≤ 6)
   /** @type {Set<string>} */
   const onResult = new Set();
   for (const p of paths) for (const n of p.nodes) onResult.add(n);
@@ -259,7 +314,30 @@ function buildWarnings(g, startId, impacts, paths, reached, active, maxDepth) {
     }
   }
 
-  // 공통원인: start와 T 모두의 원인(깊이 ≤ 2)인 제3 노드. start·T를 거치는 경로는 제외.
+  // 결과 경로 위의 구조 경고 플래그(confounded / reverse-lead / sign-mismatch / regime-flip)
+  /** @type {Set<string>} */
+  const seenFlagEdges = new Set();
+  let nFlag = 0;
+  for (const p of paths) {
+    if (nFlag >= WARN_LIMIT) break;
+    for (const e of p.edges) {
+      if (nFlag >= WARN_LIMIT) break;
+      if (!Array.isArray(e.flags) || e.flags.length === 0 || seenFlagEdges.has(e.id)) continue;
+      seenFlagEdges.add(e.id);
+      const reasons = e.flags.map((f) => FLAG_MSG[f] ?? f).join(' · ');
+      const sName = g.byId.get(e.src)?.name ?? e.src;
+      const dName = g.byId.get(e.dst)?.name ?? e.dst;
+      out.push({
+        kind: 'edge-flag',
+        nodes: [e.src, e.dst],
+        edges: [e.id],
+        message: `경로 고리 주의: ${sName} → ${dName} (${reasons})`,
+      });
+      nFlag++;
+    }
+  }
+
+  // 공통원인: start와 T 모두의 원인(깊이 ≤ 2)인 제3 노드.
   const depth = Math.min(2, maxDepth);
   let nConf = 0;
   for (const imp of impacts) {
@@ -279,7 +357,7 @@ function buildWarnings(g, startId, impacts, paths, reached, active, maxDepth) {
     nConf++;
   }
 
-  // 상관만 있음: start와 상관이 있으나 인과 경로가 없는 쌍(cors는 전파에 쓰지 않는다)
+  // 상관만 있음: start와 상관이 있으나 인과 경로가 없는 쌍
   let nCor = 0;
   for (const c of g.cors) {
     if (nCor >= WARN_LIMIT) break;

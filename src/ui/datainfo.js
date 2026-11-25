@@ -52,6 +52,11 @@ export function dataInfoHtml(o) {
   const { byLevel, bplus, bminus } = countLevels(graph.edges);
   const iso = isolatedCount(graph);
   const sec = sectorsPresent(graph).length;
+  const tc = { core: 0, bridge: 0, econ: 0 };
+  for (const n of graph.nodes) {
+    if (n.tier === 'core' || n.tier === 'bridge' || n.tier === 'econ') tc[n.tier] += 1;
+  }
+  const hasTiers = tc.core + tc.bridge + tc.econ > 0;
 
   /** @param {string} k @param {string} v @param {string} [title] */
   const row = (k, v, title) =>
@@ -84,11 +89,16 @@ export function dataInfoHtml(o) {
 
   const gen = meta.generated ? String(meta.generated) : '';
   const ver = meta.version ? String(meta.version) : '';
+  const mr = /** @type {any} */ (meta).marketRegime;
+  const regRow = mr && mr.label ? row('시장 국면', `${mr.label} (${mr.asof || ''})`) : '';
+  const tierRow = hasTiers ? row('티어 분포', `핵심 ${nf.format(tc.core)} · 연결 ${nf.format(tc.bridge)} · 이론 ${nf.format(tc.econ)}`) : '';
 
   return (
     row('노드', `${nf.format(nodes)}개`) +
     row('관계선', `${nf.format(edges)}개`) +
     row('섹터', `${nf.format(sec)}종`) +
+    tierRow +
+    regRow +
     row('무연결 노드', `${nf.format(iso)}개`, '연결이 하나도 없는 노드. 보기 설정의 "연결 없는 점 숨김"이 켜져 있으면 화면에 보이지 않는다.') +
     bar +
     `<div class="fnote">관계선 등급 분포</div>` +

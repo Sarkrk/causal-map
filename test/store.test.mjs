@@ -32,7 +32,7 @@ test('초기값은 원본 기본값과 같다', () => {
   assert.equal(st.filters.thr, 0);
   assert.equal(st.filters.showNR, true);
   assert.equal(st.filters.showCor, false);
-  assert.deepEqual(st.prefs, { labAll: false, hideOrph: true, autoSpin: true, wobble: true });
+  assert.deepEqual(st.prefs, { labAll: false, hideOrph: true, autoSpin: true, wobble: true, showState: true });
   assert.deepEqual(st.view, { selected: null, hop: 1, dir: 'both', tab: 'in', flatAll: false, trace: null, pathTo: null, pathRev: false, pathQuery: '', search: '', sim: { start: null, sign: 1, regime: null, depth: 4 } });
 });
 

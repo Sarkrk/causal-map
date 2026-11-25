@@ -76,8 +76,9 @@ test('migrate: v0·v1 노드의 desc·aka 보존, 없으면 키를 만들지 않
   }
 });
 
-test('migrate: v2 입력은 그대로 같은 객체', () => {
-  assert.equal(migrate(v2fx), v2fx);
+test('migrate: v3 입력은 그대로 같은 객체', () => {
+  const v3 = migrate(v2fx);
+  assert.equal(migrate(v3), v3);
 });
 
 /** @param {string} name @param {string[]} [aka] @returns {any} */

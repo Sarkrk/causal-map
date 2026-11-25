@@ -2,7 +2,7 @@
 // 노드 상세 시트: 헤더·탭·항목 목록·관계도. 원본 render()·item()·cri()와 같은 문구.
 // 클릭은 이벤트 위임(data-act/data-id). inline onclick은 쓰지 않는다.
 // 루프·경로 탭: 계산·HTML은 explore.js. 경로 입력창은 재렌더 때 유지하고 제안·결과만 갈아 끼운다.
-import { GC, SN, SECC, DIR_BTN, levelText, levelColor } from '../store/labels.js';
+import { GC, SN, SECC, DIR_BTN, levelText, levelColor, TIER_TEXT, FLAG_TEXT } from '../store/labels.js';
 import { causalVisible } from '../store/select.js';
 import { SIGN_LABEL } from '../engine/graph.js';
 import { esc, flatHtml } from '../render/flatmap.js';
@@ -81,13 +81,29 @@ export function initPanel(o) {
    * @param {NodeData} other
    * @param {string} dir
    */
-  const item = (st, l, other, dir) =>
-    `<div class="it"><div class="r1"><span class="g" style="background:${GC[l.level]}33;color:${l.level === 'C' ? '#bbb' : levelColor(l.level, l.sub)}">${esc(levelText(l.level, l.sub))}</span>` +
-    `<span class="sg">${esc(SIGN_LABEL[l.sign] ?? l.sign)}</span><span class="nm">${dir} ${esc(other.name)}</span>` +
-    `<a class="go" data-act="go" data-id="${esc(other.id)}" role="button">이동 ›</a></div>` +
-    (l.r != null ? `<div class="meta">강도 ${+Math.abs(l.r).toFixed(2)}</div>` : '') +
-    (l.note ? `<div class="note">${esc(l.note)}</div>` : '') +
-    `</div>`;
+  const item = (st, l, other, dir) => {
+    const metaParts = [];
+    if (l.r != null) metaParts.push(`강도 ${+Math.abs(l.r).toFixed(2)}`);
+    if (l.stats) {
+      const fr = l.stats.freq === 'D' ? '일' : l.stats.freq === 'W' ? '주' : l.stats.freq === 'M' ? '월' : l.stats.freq === 'Q' ? '분기' : '';
+      if (l.stats.n != null) metaParts.push(`표본 ${l.stats.n}${fr}`);
+      if (l.stats.eraAgree === true) metaParts.push('시대 일관');
+      else if (l.stats.eraAgree === false) metaParts.push('시대 엇갈림');
+    }
+    const flagHtml =
+      Array.isArray(l.flags) && l.flags.length
+        ? `<div class="meta" style="color:#e0af68">${l.flags.map((fl) => `⚠ ${esc(FLAG_TEXT[fl] ?? fl)}`).join(' · ')}</div>`
+        : '';
+    return (
+      `<div class="it"><div class="r1"><span class="g" style="background:${GC[l.level]}33;color:${l.level === 'C' ? '#bbb' : levelColor(l.level, l.sub)}">${esc(levelText(l.level, l.sub))}</span>` +
+      `<span class="sg">${esc(SIGN_LABEL[l.sign] ?? l.sign)}</span><span class="nm">${dir} ${esc(other.name)}</span>` +
+      `<a class="go" data-act="go" data-id="${esc(other.id)}" role="button">이동 ›</a></div>` +
+      (metaParts.length ? `<div class="meta">${esc(metaParts.join(' · '))}</div>` : '') +
+      flagHtml +
+      (l.note ? `<div class="note">${esc(l.note)}</div>` : '') +
+      `</div>`
+    );
+  };
 
   /**
    * 상위 TOP_N개만 먼저 보이고 나머지는 접는다.
@@ -125,9 +141,21 @@ export function initPanel(o) {
     const cr = graph.cors.filter((c) => c.src === n.id || c.dst === n.id);
 
     nt.innerHTML = `<span class="dot" style="background:${SECC[/** @type {'other'} */ (n.sector || 'other')]}"></span>${esc(n.name)}`;
-    nsub.textContent = SN[/** @type {'other'} */ (n.sector || 'other')] || '';
+    const secLabel = SN[/** @type {'other'} */ (n.sector || 'other')] || '';
+    const tierLabel = n.tier && TIER_TEXT[n.tier] ? ` · ${TIER_TEXT[n.tier]}` : '';
+    nsub.textContent = secLabel + tierLabel;
 
-    ndesc.innerHTML = nodeDescHtml(n);
+    let stateHtml = '';
+    if (n.state) {
+      const z = n.state.z;
+      const col = !n.state.fresh ? '#8c8e94' : z >= 1.5 ? '#ff6b6b' : z <= -1.5 ? '#4dabf7' : '#cfd2d6';
+      const winText = n.state.win === '21D' ? '21거래일' : n.state.win === '1Q' ? '1분기' : '1개월';
+      const zStr = `${z >= 0 ? '+' : ''}${z.toFixed(2)}`;
+      const chgPart = n.state.chg ? ` ${n.state.chg}` : '';
+      const staleTag = n.state.fresh ? '' : ' · 구 관측';
+      stateHtml = `<div class="sub" style="color:${col};margin-top:4px">최근 ${winText}${esc(chgPart)} (z ${esc(zStr)} · ${esc(n.state.asof)}${staleTag})</div>`;
+    }
+    ndesc.innerHTML = stateHtml + nodeDescHtml(n);
 
     /** @type {Record<'map'|'in'|'out'|'cor', string>} */
     const B = {

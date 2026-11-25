@@ -1,8 +1,8 @@
 // @ts-check
-// graph.schema.json(v2) 규칙을 코드로 옮긴 검증기 + 참조 무결성 검사.
+// graph.schema.json(v3) 규칙을 코드로 옮긴 검증기 + 참조 무결성 검사.
 // JSON 스키마 파일은 import하지 않는다(enum·키 목록은 아래 상수로 둔다).
 
-import { LAGS, REGIMES } from './v2.js';
+import { LAGS, REGIMES, TIERS, EDGE_FLAGS } from './v3.js';
 
 /** @typedef {import('../types.js').GraphData} GraphData */
 
@@ -10,16 +10,19 @@ const TOP_KEYS = ['schemaVersion', 'meta', 'nodes', 'edges', 'cors'];
 const META_REQUIRED = ['version', 'generated', 'nodes', 'edges', 'levels'];
 const SIGNS = ['+', '-', '±'];
 const LEVELS = ['A', 'B', 'C', 'D'];
-// v1 이하 데이터는 cat만 있고 sector가 없다. cat은 선택 키로 허용하되 값은 읽지 않는다(11/25).
 const NODE_REQUIRED = ['id', 'name'];
-const NODE_KEYS = ['id', 'name', 'sector', 'layer', 'series', 'desc', 'descSrc', 'aka', 'cat'];
+const NODE_KEYS = ['id', 'name', 'sector', 'tier', 'state', 'layer', 'series', 'desc', 'descSrc', 'aka', 'cat'];
+const STATE_KEYS = ['z', 'chg', 'win', 'asof', 'fresh'];
+const STATE_WINS = ['21D', '1M', '1Q'];
 const SECTORS = ['macro', 'finance', 'semi', 'bio', 'energy', 'trade', 'policy', 'labor', 'other'];
 const DESC_MAX = 240;
 const DESC_SRC_MAX = 120;
 const AKA_MAX_N = 12;
 const AKA_MAX_LEN = 40;
 const EDGE_REQUIRED = ['id', 'src', 'dst', 'sign', 'level', 'status', 'note', 'r', 'rsrc', 'evidence'];
-const EDGE_KEYS = [...EDGE_REQUIRED, 'cond', 'lag', 'regime', 'strength', 'sub'];
+const EDGE_KEYS = [...EDGE_REQUIRED, 'cond', 'lag', 'regime', 'strength', 'sub', 'flags', 'stats'];
+const STATS_KEYS = ['n', 'freq', 'eraAgree'];
+const STATS_FREQS = ['D', 'W', 'M', 'Q'];
 const EVIDENCE_KEYS = ['kind', 'stance'];
 const COR_REQUIRED = ['src', 'dst', 'r'];
 
@@ -31,29 +34,21 @@ function isObj(x) {
   return x !== null && typeof x === 'object' && !Array.isArray(x);
 }
 
-/**
- * @param {unknown} x
- * @returns {boolean} 비어 있지 않은 문자열인지
- */
+/** @param {unknown} x */
 function nonEmptyStr(x) {
   return typeof x === 'string' && x.length > 0;
 }
 
-/**
- * @param {unknown} x
- * @returns {boolean} 유한한 숫자인지
- */
+/** @param {unknown} x */
 function finiteNum(x) {
   return typeof x === 'number' && Number.isFinite(x);
 }
 
 /**
- * 객체에 허용되지 않은 키가 있으면 오류를 쌓는다.
  * @param {Record<string, any>} obj
  * @param {string[]} allowed
  * @param {string} label
  * @param {string[]} errors
- * @returns {void}
  */
 function checkUnknownKeys(obj, allowed, label, errors) {
   for (const k of Object.keys(obj)) {
@@ -66,7 +61,6 @@ function checkUnknownKeys(obj, allowed, label, errors) {
  * @param {string[]} keys
  * @param {string} label
  * @param {string[]} errors
- * @returns {void}
  */
 function checkRequired(obj, keys, label, errors) {
   for (const k of keys) {
@@ -74,11 +68,7 @@ function checkRequired(obj, keys, label, errors) {
   }
 }
 
-/**
- * sign 값 오류 메시지(유니코드 마이너스는 힌트를 붙인다).
- * @param {unknown} s
- * @returns {string}
- */
+/** @param {unknown} s */
 function signHint(s) {
   return s === '\u2212' ? ' (use ASCII "-")' : '';
 }
@@ -87,9 +77,9 @@ function signHint(s) {
  * meta 블록 검사.
  * @param {unknown} meta
  * @param {string[]} errors
- * @returns {void}
+ * @param {string[]} warnings
  */
-function checkMeta(meta, errors) {
+function checkMeta(meta, errors, warnings) {
   if (meta === undefined) return;
   if (!isObj(meta)) {
     errors.push('meta: must be an object');
@@ -109,14 +99,33 @@ function checkMeta(meta, errors) {
       }
     }
   }
+  if ('tiers' in meta && meta.tiers !== undefined && meta.tiers !== null) {
+    if (!isObj(meta.tiers)) errors.push('meta.tiers: must be an object');
+    else {
+      for (const [k, v] of Object.entries(meta.tiers)) {
+        if (!Number.isInteger(v) || v < 0) errors.push(`meta.tiers.${k}: must be a non-negative integer`);
+      }
+    }
+  }
+  if ('marketRegime' in meta && meta.marketRegime !== undefined && meta.marketRegime !== null) {
+    const mr = meta.marketRegime;
+    if (!isObj(mr)) errors.push('meta.marketRegime: must be an object or null');
+    else {
+      checkUnknownKeys(mr, ['code', 'label', 'asof'], 'meta.marketRegime', errors);
+      checkRequired(mr, ['code', 'label', 'asof'], 'meta.marketRegime', errors);
+      if ('code' in mr && !nonEmptyStr(mr.code)) errors.push('meta.marketRegime.code: must be a non-empty string');
+      else if (typeof mr.code === 'string' && !REGIMES.includes(mr.code)) warnings.push(`meta.marketRegime.code "${mr.code}" not in vocabulary`);
+      if ('label' in mr && !nonEmptyStr(mr.label)) errors.push('meta.marketRegime.label: must be a non-empty string');
+      if ('asof' in mr && !nonEmptyStr(mr.asof)) errors.push('meta.marketRegime.asof: must be a non-empty string');
+    }
+  }
 }
 
 /**
- * 노드 선택 키 desc·descSrc·aka 검사(null·생략 허용).
+ * 노드 선택 키 desc·descSrc·aka 검사.
  * @param {Record<string, any>} n
  * @param {string} label
  * @param {string[]} errors
- * @returns {void}
  */
 function checkNodeDesc(n, label, errors) {
   for (const [k, max] of /** @type {[string, number][]} */ ([['desc', DESC_MAX], ['descSrc', DESC_SRC_MAX]])) {
@@ -143,7 +152,28 @@ function checkNodeDesc(n, label, errors) {
 }
 
 /**
- * 노드 배열 검사. 유효한 노드 id 집합을 반환한다.
+ * 노드 state 블록 검사(v3 선택).
+ * @param {unknown} st
+ * @param {string} label
+ * @param {string[]} errors
+ */
+function checkNodeState(st, label, errors) {
+  if (st === undefined || st === null) return;
+  if (!isObj(st)) {
+    errors.push(`${label}: state must be an object or null`);
+    return;
+  }
+  checkUnknownKeys(st, STATE_KEYS, `${label}.state`, errors);
+  checkRequired(st, STATE_KEYS, `${label}.state`, errors);
+  if ('z' in st && (!finiteNum(st.z) || st.z < -10 || st.z > 10)) errors.push(`${label}.state: z must be a finite number in [-10, 10]`);
+  if ('chg' in st && (typeof st.chg !== 'string' || st.chg.length > 32)) errors.push(`${label}.state: chg must be a string (<=32)`);
+  if ('win' in st && !STATE_WINS.includes(st.win)) errors.push(`${label}.state: win "${String(st.win)}" invalid`);
+  if ('asof' in st && !nonEmptyStr(st.asof)) errors.push(`${label}.state: asof must be a non-empty string`);
+  if ('fresh' in st && typeof st.fresh !== 'boolean') errors.push(`${label}.state: fresh must be a boolean`);
+}
+
+/**
+ * 노드 배열 검사.
  * @param {unknown} nodes
  * @param {string[]} errors
  * @returns {Set<string>}
@@ -167,6 +197,8 @@ function checkNodes(nodes, errors) {
     if ('name' in n && !nonEmptyStr(n.name)) errors.push(`${label}: name must be a non-empty string`);
     if ('cat' in n && n.cat !== null && typeof n.cat !== 'string') errors.push(`${label}: cat must be string or null (legacy, ignored)`);
     if ('sector' in n && n.sector !== null && !SECTORS.includes(n.sector)) errors.push(`${label}: sector "${String(n.sector)}" invalid`);
+    if ('tier' in n && n.tier !== null && n.tier !== undefined && !TIERS.includes(n.tier)) errors.push(`${label}: tier "${String(n.tier)}" invalid`);
+    checkNodeState(n.state, label, errors);
     if ('layer' in n && n.layer !== null && !Number.isInteger(n.layer)) errors.push(`${label}: layer must be integer or null`);
     if ('series' in n && n.series !== null && typeof n.series !== 'string') errors.push(`${label}: series must be string or null`);
     checkNodeDesc(n, label, errors);
@@ -182,11 +214,9 @@ function checkNodes(nodes, errors) {
 }
 
 /**
- * evidence 배열 검사.
  * @param {unknown} ev
  * @param {string} label
  * @param {string[]} errors
- * @returns {void}
  */
 function checkEvidence(ev, label, errors) {
   if (!Array.isArray(ev)) {
@@ -206,12 +236,47 @@ function checkEvidence(ev, label, errors) {
 }
 
 /**
- * 엣지 배열 검사(필드·enum·참조 무결성·자기루프·중복). 어휘 밖 regime은 warnings.
+ * 엣지 flags·stats 검사(v3 선택).
+ * @param {Record<string, any>} e
+ * @param {string} label
+ * @param {string[]} errors
+ */
+function checkEdgeV3(e, label, errors) {
+  if ('flags' in e && e.flags !== null && e.flags !== undefined) {
+    if (!Array.isArray(e.flags)) errors.push(`${label}: flags must be an array or null`);
+    else {
+      /** @type {Set<string>} */
+      const seen = new Set();
+      e.flags.forEach((f, j) => {
+        if (!EDGE_FLAGS.includes(f)) errors.push(`${label}: flags[${j}] "${String(f)}" invalid`);
+        else if (seen.has(f)) errors.push(`${label}: flags[${j}] duplicate "${f}"`);
+        else seen.add(f);
+      });
+    }
+  }
+  if ('stats' in e && e.stats !== null && e.stats !== undefined) {
+    if (!isObj(e.stats)) errors.push(`${label}: stats must be an object or null`);
+    else {
+      checkUnknownKeys(e.stats, STATS_KEYS, `${label}.stats`, errors);
+      if ('n' in e.stats && e.stats.n !== null && (!Number.isInteger(e.stats.n) || e.stats.n < 0)) {
+        errors.push(`${label}.stats: n must be a non-negative integer or null`);
+      }
+      if ('freq' in e.stats && e.stats.freq !== null && !STATS_FREQS.includes(e.stats.freq)) {
+        errors.push(`${label}.stats: freq "${String(e.stats.freq)}" invalid`);
+      }
+      if ('eraAgree' in e.stats && e.stats.eraAgree !== null && typeof e.stats.eraAgree !== 'boolean') {
+        errors.push(`${label}.stats: eraAgree must be a boolean or null`);
+      }
+    }
+  }
+}
+
+/**
+ * 엣지 배열 검사.
  * @param {unknown} edges
  * @param {Set<string>} nodeIds
  * @param {string[]} errors
  * @param {string[]} warnings
- * @returns {void}
  */
 function checkEdges(edges, nodeIds, errors, warnings) {
   if (!Array.isArray(edges)) {
@@ -253,11 +318,11 @@ function checkEdges(edges, nodeIds, errors, warnings) {
       if (typeof e.regime !== 'string') errors.push(`${label}: regime must be a string or null`);
       else if (!REGIMES.includes(e.regime)) warnings.push(`${label}: regime "${e.regime}" not in vocabulary (${REGIMES.join('|')})`);
     }
-    // sub: B 등급 세분(선택). 화면 표시 전용 — level enum은 A~D 그대로 둔다.
     if ('sub' in e && e.sub !== null && e.sub !== undefined) {
       if (e.sub !== '+' && e.sub !== '-') errors.push(`${label}: sub "${String(e.sub)}" invalid (use "+" or "-")`);
       else if (e.level !== 'B') warnings.push(`${label}: sub "${e.sub}" ignored (level ${String(e.level)} is not B)`);
     }
+    checkEdgeV3(e, label, errors);
     if ('evidence' in e) checkEvidence(e.evidence, label, errors);
 
     const srcOk = nonEmptyStr(e.src);
@@ -280,12 +345,11 @@ function checkEdges(edges, nodeIds, errors, warnings) {
 }
 
 /**
- * 코르 배열 검사. 참조 누락은 오류가 아니라 warnings로 보고한다.
+ * 코르 배열 검사.
  * @param {unknown} cors
  * @param {Set<string>} nodeIds
  * @param {string[]} errors
  * @param {string[]} warnings
- * @returns {void}
  */
 function checkCors(cors, nodeIds, errors, warnings) {
   if (!Array.isArray(cors)) {
@@ -309,9 +373,9 @@ function checkCors(cors, nodeIds, errors, warnings) {
 }
 
 /**
- * graph.json v2 객체를 검증한다. 입력은 변경하지 않는다.
+ * graph.json v3 객체를 검증한다. 입력은 변경하지 않는다.
  * @param {unknown} g
- * @returns {{ok:boolean, errors:string[], warnings:string[]}}  ok는 errors가 비었을 때 true. warnings는 ok에 영향 없음.
+ * @returns {{ok:boolean, errors:string[], warnings:string[]}}
  */
 export function validateGraph(g) {
   /** @type {string[]} */
@@ -323,12 +387,12 @@ export function validateGraph(g) {
   }
   checkUnknownKeys(g, TOP_KEYS, 'top-level', errors);
   checkRequired(g, TOP_KEYS, 'top-level', errors);
-  if ('schemaVersion' in g && g.schemaVersion === 1) {
-    errors.push('schemaVersion 1 (v1) data: run migrate() first, then validate');
-  } else if ('schemaVersion' in g && g.schemaVersion !== 2) {
-    errors.push(`schemaVersion must be 2 (got ${JSON.stringify(g.schemaVersion)})`);
+  if ('schemaVersion' in g && (g.schemaVersion === 1 || g.schemaVersion === 2)) {
+    errors.push(`schemaVersion ${g.schemaVersion} (v${g.schemaVersion}) data: run migrate() first, then validate`);
+  } else if ('schemaVersion' in g && g.schemaVersion !== 3) {
+    errors.push(`schemaVersion must be 3 (got ${JSON.stringify(g.schemaVersion)})`);
   }
-  checkMeta(g.meta, errors);
+  checkMeta(g.meta, errors, warnings);
   const nodeIds = checkNodes(g.nodes, errors);
   checkEdges(g.edges, nodeIds, errors, warnings);
   checkCors(g.cors, nodeIds, errors, warnings);

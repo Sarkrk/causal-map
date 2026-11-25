@@ -10,7 +10,7 @@ import { SECTOR_ORDER } from './labels.js';
 /** @typedef {import('./store.js').Filters} Filters */
 
 /**
- * 엣지 양 끝 노드가 모두 켜진 섹터에 속하는지. 섹터가 없는 노드는 'other'.
+ * 엣지 양 끝 노드가 모두 켜진 섹터·티어에 속하는지. 섹터가 없는 노드는 'other', 티어가 없는 노드는 'core'.
  * @param {Graph} g
  * @param {string} src
  * @param {string} dst
@@ -20,7 +20,12 @@ import { SECTOR_ORDER } from './labels.js';
 function sectorsOk(g, src, dst, f) {
   const a = g.byId.get(src);
   const b = g.byId.get(dst);
-  return !!a && !!b && f.sectors.includes(a.sector || 'other') && f.sectors.includes(b.sector || 'other');
+  if (!a || !b) return false;
+  if (!f.sectors.includes(a.sector || 'other') || !f.sectors.includes(b.sector || 'other')) return false;
+  if (Array.isArray(f.tiers)) {
+    if (!f.tiers.includes(a.tier || 'core') || !f.tiers.includes(b.tier || 'core')) return false;
+  }
+  return true;
 }
 
 /**
@@ -98,6 +103,7 @@ export function visible(g, state, sel = state.view.selected) {
   const nodes = new Set();
   for (const n of g.nodes) {
     if (!f.sectors.includes(n.sector || 'other')) continue;
+    if (Array.isArray(f.tiers) && n.id !== sel && !f.tiers.includes(n.tier || 'core')) continue;
     if (!state.prefs.hideOrph || has.has(n.id) || n.id === sel) nodes.add(n.id);
   }
   return { nodes, causal, cors };

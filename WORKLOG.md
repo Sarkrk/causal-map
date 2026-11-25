@@ -6,13 +6,22 @@
 
 - 최종 보고서 66건, 논지 문서 26개, 일일 시황 리포트 10/22부터 매일
 
-- 인과 지도: 노드 865 · 인과 1,184(A 78 / B 845 = B+ 168·B- 677 / C 238 / D 23) · 상관 1,249 → [앱 열기](https://sarkrk.github.io/causal-map/)
+- 인과 지도: 노드 983 · 인과 1,391(A 122 / B 891 = B+ 189·B- 702 / C 354 / D 24) · 상관 1,472 → [앱 열기](https://sarkrk.github.io/causal-map/)
 
 - 원칙: 지어내지 않기(못 찾으면 [미확인]), 다른 제공자로 교차확인, 확률엔 기저율 먼저, 통계 검증된 신호만 근거로 사용
 
 ## 날짜별
 
-### 2026-11-25
+### 2026-11-25 (v3 고도화 · P0 패치 · DB 감사 교정)
+
+- **작업**:
+  1. **P0 버그 패치**: `causal_app.py`·`causal_brief.py`의 `sublevel()` 정규식 탐욕 매칭 수정으로 `[r=...]` 블록과 공존하던 `B+` 30건(`E3/E12/E16/E17/E30/E53` 등) 복원, `causal_counter.py`의 ASCII `-` 부호 오류 및 `SYN` 7건 교정, `causal_app.py` 비대화형 Node 경로 폴백(`~/.nvm`) 및 `causalgraph.py build` `--force-reset` 안전장치 추가.
+  2. **DB 전수 감사 교정**: 명백한 부호 오기(`X1631`, `Z10`, `X1514`) 교정, `실질환율` `state.series`(`RBKRBIS:ret→inv`) 정렬, `디플레이션` `CPIAUCSL:inv` 반전, `SERIES_CANON`에 `DFEDTARU→FEDFUNDS` 등록(자기통제 제거), `causal_confounds.py` 억제변수 정방향 복원 판별 추가, `E15`/`T2`/`X1840` 편상관 교란 주의 기록. 재검정 후 `Z10`/`X1514`/`X1631` A등급 승격, `X1258`/`X1260` B등급 복원(`A 122 / B 891(B+ 189·B- 702) / C 354 / D 24`).
+  3. **`graph.json` v3 및 시뮬레이터 고도화**: 스키마 v3(`node.tier`: core 167 / bridge 370 / econ 446, `node.state` 최신 z-score·신선도, `meta.marketRegime`, `edge.flags`/`edge.stats`) 도입 및 v0/v1/v2→v3 자동 마이그레이션 구현. 앱 기본 뷰를 `핵심+연결(core+bridge)` 티어로 정리(검색 시 숨김 티어 자동 개방), 3D 캔버스 급변 노드(`|z|≥1.5`, fresh) 정적 링 오버레이 추가, `simulate.js`에 1차 채널별 이중계상 보정(`dedup` + noisy-OR)·`B+`/`B-` 차등 가중치·교란/불일치 0.7 감쇠·30% 혼재 임계·`edge-flag` 경고 도입.
+
+- **검증**: `causal_app.py build` 통과(스키마 v3·참조·`causal_audit.py`·공개 금지 문자열 0건, 버전 `d9b911c347`), 앱 단위 테스트 **282/282 통과**(v3 신규 테스트 7건 포함). GitHub Pages 배포 완료.
+
+### 2026-11-25 (섹터 단일 축 전환)
 
 - **작업**: 옛 '범주(cat)'를 앱·DB·도구에서 완전히 빼고 '구심점 섹터(sector)' 하나로 통일. 앱은 `CN`/`CC`/`CATEGORY_ORDER`/`categoriesPresent`/`toggleCat`/`filters.cats`를 삭제하고 색·3D 배치 기준·필터 칩·검색 제안·노드 패널 부제·데이터 정보('섹터 9종')를 모두 `sector`(없으면 `other`)로 바꿨다. 스키마는 `cat`을 필수에서 빼고 구버전 데이터 호환용 선택 키(문자열|null, 값은 무시)로만 남겼으며, v1 픽스처는 그대로 통과한다. 데이터 파이프라인 `causal_app.py`는 `cat`을 내보내지 않고 `sector`를 항상 출력하며, DB `node` 테이블의 `cat` 컬럼도 삭제했다(백업 `_cache/graph.db.bak_20261125`, 삭제 직전본 `_cache/graph.db.bak_20261125_pre_dropcat`). 섹터가 비어 있던 노드 2개는 `other`로 채웠다. HTML 산출물 도구(`causal_force.py`, `causal_mermaid.py`, `causal_graph_mobile.py`)의 범례·색·필터도 섹터 9종으로 교체.
 

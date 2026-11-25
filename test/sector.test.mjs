@@ -81,7 +81,7 @@ test('visible: 섹터 필터가 노드·엣지를 거른다', () => {
 
 test('validateGraph: sector 허용 키·값 검증', () => {
   const base = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     meta: { title: 't', version: 'v', generated: '2026-11-23 00:00', nodes: 1, edges: 0, levels: {} },
     nodes: [{ id: 'a', name: 'a', sector: 'macro', layer: 1, series: null, desc: '테스트 노드', descSrc: 'test', aka: [] }],
     edges: [],
@@ -94,7 +94,7 @@ test('validateGraph: sector 허용 키·값 검증', () => {
 });
 test('구버전 cat은 필수도 검증 대상도 아니다(무시)', () => {
   const g = structuredClone({
-    schemaVersion: 2,
+    schemaVersion: 3,
     meta: { title: 't', version: 'v', generated: '2026-11-25 00:00', nodes: 2, edges: 0, levels: {} },
     nodes: [
       { id: 'a', name: 'a', sector: 'macro', layer: 1, series: null, aka: [] },

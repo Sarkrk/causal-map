@@ -2,13 +2,14 @@
 // 단일 상태 저장소. dispatch마다 새 상태 객체를 만들고 이전 객체는 바꾸지 않는다.
 // filters·prefs·view.hop·dir·pathTo·pathRev·pathQuery·search·sim을 storage(JSON)에 저장한다. selected·tab·flatAll·trace는 저장하지 않는다.
 // 복원 때 pathTo는 nodeIds(알려진 노드 id 목록)가 주어지고 그 안에 있을 때만 살린다.
-import { LEVELS, SECTOR_ORDER } from './labels.js';
+import { LEVELS, SECTOR_ORDER, TIER_ORDER } from './labels.js';
 import { REGIMES } from '../schema/v2.js';
 
 /**
  * @typedef {Object} Filters
  * @property {string[]} levels
  * @property {string[]} sectors   구심점 섹터 필터. 빈 배열이면 전부 숨김. (옛 cats 필터는 11/25 제거)
+ * @property {string[]} tiers     노드 티어 필터(v3): core·bridge·econ.
  * @property {number} thr
  * @property {boolean} showNR
  * @property {boolean} showCor
@@ -52,6 +53,7 @@ import { REGIMES } from '../schema/v2.js';
  * @property {boolean} hideOrph
  * @property {boolean} autoSpin
  * @property {boolean} wobble
+ * @property {boolean} showState
  */
 
 /**
@@ -67,9 +69,11 @@ import { REGIMES } from '../schema/v2.js';
  *   | {type:'toggleLevel', level:string}
  *   | {type:'toggleSector', sector:string}
  *   | {type:'soloSector', sector:string}
+ *   | {type:'toggleTier', tier:string}
+ *   | {type:'setTiers', tiers:string[]}
  *   | {type:'setThr', value:number}
  *   | {type:'resetFilters', filters:Filters}
- *   | {type:'toggle', key:'showNR'|'showCor'|'weak'|'labAll'|'hideOrph'|'autoSpin'|'wobble'}
+ *   | {type:'toggle', key:'showNR'|'showCor'|'weak'|'labAll'|'hideOrph'|'autoSpin'|'wobble'|'showState'}
  *   | {type:'setHop', hop:1|2}
  *   | {type:'setDir', dir:'both'|'up'|'down'}
  *   | {type:'setTab', tab:'map'|'in'|'out'|'cor'|'loop'|'path'|'sim'}
@@ -102,7 +106,8 @@ export const SIM_DEPTH_MAX = 6;
 /** @type {SimInput} */
 const SIM_DEFAULT = { start: null, sign: 1, regime: null, depth: 4 };
 const FILTER_KEYS = ['showNR', 'showCor', 'weak'];
-const PREF_KEYS = ['labAll', 'hideOrph', 'autoSpin', 'wobble'];
+const PREF_KEYS = ['labAll', 'hideOrph', 'autoSpin', 'wobble', 'showState'];
+const ALL_TIERS = [...TIER_ORDER];
 
 /**
  * 원본 app.js 기본값과 같은 초기 상태.
@@ -111,20 +116,20 @@ const PREF_KEYS = ['labAll', 'hideOrph', 'autoSpin', 'wobble'];
  */
 export function initialState(sectors) {
   return {
-    filters: { levels: LEVELS.slice(), sectors: (sectors ?? SECTOR_ORDER).slice(), thr: 0, showNR: true, showCor: false, weak: true },
+    filters: { levels: LEVELS.slice(), sectors: (sectors ?? SECTOR_ORDER).slice(), tiers: ALL_TIERS.slice(), thr: 0, showNR: true, showCor: false, weak: true },
     view: { selected: null, hop: 1, dir: 'both', tab: 'in', flatAll: false, trace: null, pathTo: null, pathRev: false, pathQuery: '', search: '', sim: SIM_DEFAULT },
-    prefs: { labAll: false, hideOrph: true, autoSpin: true, wobble: true },
+    prefs: { labAll: false, hideOrph: true, autoSpin: true, wobble: true, showState: true },
   };
 }
 
 /**
- * 앱 첫 화면용 기본 상태: 확실·유력(A, B+) 연결만. 약한 근거(B-)·후보·논쟁은 보기 설정에서 켠다.
+ * 앱 첫 화면용 기본 상태: 확실·유력(A, B+) 연결 및 핵심+연결 티어만. 이론·배경(econ)·약한 근거(B-)는 보기 설정에서 켠다.
  * @param {string[]} [sectors]
  * @returns {AppState}
  */
 export function defaultState(sectors) {
   const s = initialState(sectors);
-  return { ...s, filters: { ...s.filters, levels: ['A', 'B'], weak: false } };
+  return { ...s, filters: { ...s.filters, levels: ['A', 'B'], tiers: ['core', 'bridge'], weak: false } };
 }
 
 /**
@@ -168,6 +173,18 @@ function reduce(s, a) {
       const sectors = solo ? SECTOR_ORDER.slice() : [a.sector];
       return { ...s, filters: { ...s.filters, sectors } };
     }
+    case 'toggleTier': {
+      if (!ALL_TIERS.includes(/** @type {any} */ (a.tier))) return s;
+      const cur = s.filters.tiers ?? ALL_TIERS;
+      const on = cur.includes(a.tier);
+      const tiers = on ? cur.filter((t) => t !== a.tier) : ALL_TIERS.filter((t) => t === a.tier || cur.includes(t));
+      return { ...s, filters: { ...s.filters, tiers } };
+    }
+    case 'setTiers': {
+      if (!Array.isArray(a.tiers)) return s;
+      const tiers = ALL_TIERS.filter((t) => a.tiers.includes(t));
+      return { ...s, filters: { ...s.filters, tiers } };
+    }
     case 'setThr': {
       if (!Number.isFinite(a.value)) return s;
       const thr = Math.min(1, Math.max(0, a.value));
@@ -179,7 +196,7 @@ function reduce(s, a) {
         return { ...s, filters: { ...s.filters, [key]: !s.filters[key] } };
       }
       if (PREF_KEYS.includes(a.key)) {
-        const key = /** @type {'labAll'|'hideOrph'|'autoSpin'|'wobble'} */ (a.key);
+        const key = /** @type {'labAll'|'hideOrph'|'autoSpin'|'wobble'|'showState'} */ (a.key);
         return { ...s, prefs: { ...s.prefs, [key]: !s.prefs[key] } };
       }
       throw new TypeError(`unknown toggle key: ${String(a.key)}`);
@@ -187,7 +204,7 @@ function reduce(s, a) {
     case 'resetFilters': {
       // 호출자가 initialState(...).filters를 넘긴다. 복사해서 저장한다.
       const f = a.filters;
-      return { ...s, filters: { ...f, levels: f.levels.slice(), sectors: (f.sectors ?? SECTOR_ORDER).slice() } };
+      return { ...s, filters: { ...f, levels: f.levels.slice(), sectors: (f.sectors ?? SECTOR_ORDER).slice(), tiers: (f.tiers ?? ALL_TIERS).slice() } };
     }
     case 'setHop':
       return a.hop === 1 || a.hop === 2 ? { ...s, view: { ...s.view, hop: a.hop } } : s;
@@ -299,6 +316,10 @@ function restore(initial, key, storage, nodeIds) {
     Array.isArray(f.sectors) && f.sectors.every((x) => typeof x === 'string' && SECTOR_ORDER.includes(x))
       ? SECTOR_ORDER.filter((x) => /** @type {string[]} */ (f.sectors).includes(x))
       : initial.filters.sectors;
+  const tiers =
+    Array.isArray(f.tiers) && f.tiers.every((x) => typeof x === 'string' && ALL_TIERS.includes(/** @type {any} */ (x)))
+      ? ALL_TIERS.filter((x) => /** @type {string[]} */ (f.tiers).includes(x))
+      : initial.filters.tiers;
   const thr = typeof f.thr === 'number' && f.thr >= 0 && f.thr <= 1 ? f.thr : initial.filters.thr;
   const pathTo = typeof v.pathTo === 'string' && nodeIds?.has(v.pathTo) ? v.pathTo : null;
   const sv = obj(v.sim);
@@ -313,6 +334,7 @@ function restore(initial, key, storage, nodeIds) {
     filters: {
       levels,
       sectors,
+      tiers,
       thr,
       showNR: bool(f.showNR, initial.filters.showNR),
       showCor: bool(f.showCor, initial.filters.showCor),
@@ -323,6 +345,7 @@ function restore(initial, key, storage, nodeIds) {
       hideOrph: bool(p.hideOrph, initial.prefs.hideOrph),
       autoSpin: bool(p.autoSpin, initial.prefs.autoSpin),
       wobble: bool(p.wobble, initial.prefs.wobble),
+      showState: bool(p.showState, initial.prefs.showState),
     },
     view: {
       ...initial.view,

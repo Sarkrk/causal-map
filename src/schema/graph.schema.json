@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "graph.v2.json",
-  "title": "causal-map graph.json v2",
+  "$id": "graph.v3.json",
+  "title": "causal-map graph.json v3",
   "type": "object",
   "required": [
     "schemaVersion",
@@ -13,7 +13,7 @@
   "additionalProperties": false,
   "properties": {
     "schemaVersion": {
-      "const": 2
+      "const": 3
     },
     "meta": {
       "type": "object",
@@ -44,6 +44,41 @@
           "type": "object",
           "additionalProperties": {
             "type": "integer"
+          }
+        },
+        "tiers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "marketRegime": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "label",
+            "asof"
+          ],
+          "properties": {
+            "code": {
+              "type": "string",
+              "minLength": 1
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "asof": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 20
+            }
           }
         }
       }
@@ -132,6 +167,59 @@
               null
             ],
             "description": "구심점 섹터(11/23). 없으면 other 취급."
+          },
+          "tier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "core",
+              "bridge",
+              "econ",
+              null
+            ],
+            "description": "노드 계층 티어(v3): core=시장 핵심, bridge=핵심 1-hop 연결, econ=이론·배경."
+          },
+          "state": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "required": [
+              "z",
+              "chg",
+              "win",
+              "asof",
+              "fresh"
+            ],
+            "properties": {
+              "z": {
+                "type": "number",
+                "minimum": -10,
+                "maximum": 10
+              },
+              "chg": {
+                "type": "string",
+                "maxLength": 32
+              },
+              "win": {
+                "enum": [
+                  "21D",
+                  "1M",
+                  "1Q"
+                ]
+              },
+              "asof": {
+                "type": "string",
+                "minLength": 4,
+                "maxLength": 20
+              },
+              "fresh": {
+                "type": "boolean"
+              }
+            }
           }
         }
       }
@@ -219,6 +307,52 @@
               "+",
               "-"
             ]
+          },
+          "flags": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "reverse-lead",
+                "confounded",
+                "regime-flip",
+                "sign-mismatch"
+              ]
+            }
+          },
+          "stats": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "n": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "freq": {
+                "enum": [
+                  "D",
+                  "W",
+                  "M",
+                  "Q",
+                  null
+                ]
+              },
+              "eraAgree": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              }
+            }
           },
           "r": {
             "type": [

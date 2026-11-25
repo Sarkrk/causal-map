@@ -1,7 +1,7 @@
 // @ts-check
 // 필터 칩(등급·섹터), |r| 슬라이더, 표시 토글. 원본 chip()·tg()·thrEl 동작.
 // 화면 상태는 store를 따라간다(subscribe에서 칩 on/off 동기화).
-import { LEVELS, LEVEL_TEXT, SN, SECC, GC } from '../store/labels.js';
+import { LEVELS, LEVEL_TEXT, SN, SECC, GC, TIER_ORDER, TIER_TEXT, TIER_COLOR } from '../store/labels.js';
 import { defaultState } from '../store/store.js';
 
 /** @typedef {import('../store/store.js').AppState} AppState */
@@ -11,14 +11,14 @@ import { defaultState } from '../store/store.js';
 /**
  * @param {{
  *   graph: Graph, store: Store, sectors: string[],
- *   flv: HTMLElement, fsec: HTMLElement, thrEl: HTMLInputElement, thrv: HTMLElement,
+ *   flv: HTMLElement, fsec: HTMLElement, ftier?: HTMLElement|null, thrEl: HTMLInputElement, thrv: HTMLElement,
  *   reset: HTMLElement, badge: HTMLElement,
- *   toggles: {tweak: HTMLElement, tnr: HTMLElement, tcor: HTMLElement, tlab: HTMLElement, torp: HTMLElement, tspin: HTMLElement, twob: HTMLElement}
+ *   toggles: {tweak: HTMLElement, tnr: HTMLElement, tcor: HTMLElement, tlab: HTMLElement, torp: HTMLElement, tspin: HTMLElement, twob: HTMLElement, tstate?: HTMLElement|null}
  * }} o
  * @returns {void}
  */
 export function initFilters(o) {
-  const { graph, store, sectors, flv, fsec, thrEl, thrv, toggles, reset, badge } = o;
+  const { graph, store, sectors, flv, fsec, ftier, thrEl, thrv, toggles, reset, badge } = o;
   const base = defaultState(sectors);
 
   /** @type {Map<HTMLElement, (st: AppState) => boolean>} */
@@ -61,12 +61,23 @@ export function initFilters(o) {
       () => store.dispatch({ type: 'toggleSector', sector: k }),
     );
   }
+  if (ftier) {
+    for (const tk of TIER_ORDER) {
+      chip(
+        ftier,
+        TIER_TEXT[tk],
+        TIER_COLOR[tk],
+        (st) => (st.filters.tiers ?? [...TIER_ORDER]).includes(tk),
+        () => store.dispatch({ type: 'toggleTier', tier: tk }),
+      );
+    }
+  }
 
   const paintThr = () => thrEl.style.setProperty('--p', ((+thrEl.value - +(thrEl.min || 0)) / ((+thrEl.max || 1) - +(thrEl.min || 0))) * 100 + '%');
   thrEl.addEventListener('input', paintThr);
   thrEl.addEventListener('input', () => store.dispatch({ type: 'setThr', value: +thrEl.value }));
 
-  /** @type {[HTMLElement, 'showNR'|'showCor'|'weak'|'labAll'|'hideOrph'|'autoSpin'|'wobble', (st: AppState) => boolean][]} */
+  /** @type {[HTMLElement|null|undefined, 'showNR'|'showCor'|'weak'|'labAll'|'hideOrph'|'autoSpin'|'wobble'|'showState', (st: AppState) => boolean][]} */
   const tg = [
     [toggles.tweak, 'weak', (st) => st.filters.weak],
     [toggles.tnr, 'showNR', (st) => st.filters.showNR],
@@ -75,9 +86,10 @@ export function initFilters(o) {
     [toggles.torp, 'hideOrph', (st) => st.prefs.hideOrph],
     [toggles.tspin, 'autoSpin', (st) => st.prefs.autoSpin],
     [toggles.twob, 'wobble', (st) => st.prefs.wobble],
+    [toggles.tstate, 'showState', (st) => st.prefs.showState],
   ];
   for (const [el, key] of tg) {
-    el.addEventListener('click', () => store.dispatch({ type: 'toggle', key }));
+    if (el) el.addEventListener('click', () => store.dispatch({ type: 'toggle', key }));
   }
 
   // 시트 헤더 드래그(pointerdown·capture)와 겹치지 않게 막는다.
@@ -88,11 +100,14 @@ export function initFilters(o) {
   const activeCount = (/** @type {AppState} */ st) => {
     const f = st.filters;
     const b = base.filters;
+    const ft = f.tiers ?? b.tiers;
     return (
       f.levels.filter((x) => !b.levels.includes(x)).length +
       b.levels.filter((x) => !f.levels.includes(x)).length +
       f.sectors.filter((c) => !b.sectors.includes(c)).length +
       b.sectors.filter((c) => !f.sectors.includes(c)).length +
+      ft.filter((t) => !b.tiers.includes(t)).length +
+      b.tiers.filter((t) => !ft.includes(t)).length +
       (f.thr > 0 ? 1 : 0) +
       (f.showNR !== b.showNR ? 1 : 0) +
       (f.showCor !== b.showCor ? 1 : 0) +
@@ -110,7 +125,7 @@ export function initFilters(o) {
     thrEl.value = String(st.filters.thr);
     thrv.textContent = st.filters.thr.toFixed(2);
     paintThr();
-    for (const [el, , get] of tg) el.classList.toggle('on', get(st));
+    for (const [el, , get] of tg) if (el) el.classList.toggle('on', get(st));
   }
 
   sync(store.get());

@@ -495,6 +495,22 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
       .forEach((n) => {
         const r = n.rad * n.sf * zk * 1.5; // 화면상 실제 반지름
         const inH = !hs || hs.has(n.d.id);
+        // v3 최신 시장 급변 상태 오버레이(|z| >= 1.5, fresh === true). 정적 이중 링(Idle 0fps 유지).
+        if (st.prefs.showState && n.d.state?.fresh && Math.abs(n.d.state.z) >= 1.5 && (!hs || inH)) {
+          const z = n.d.state.z;
+          const scol = z > 0 ? '#ff6b6b' : '#4dabf7';
+          ctx.globalAlpha = 0.22 * (hs ? 1 : n.fog);
+          ctx.strokeStyle = scol;
+          ctx.lineWidth = Math.min(4.5, Math.abs(z) * 1.1) + 2;
+          ctx.beginPath();
+          ctx.arc(n.sx, n.sy, r + 4.5, 0, 6.283);
+          ctx.stroke();
+          ctx.globalAlpha = 0.85 * (hs ? 1 : n.fog);
+          ctx.lineWidth = Math.min(2.6, Math.max(1.2, Math.abs(z) * 0.65));
+          ctx.beginPath();
+          ctx.arc(n.sx, n.sy, r + 4.5, 0, 6.283);
+          ctx.stroke();
+        }
         if (hs && inH) {
           ctx.globalAlpha = n.d.id === sel ? 0.5 : 0.3;
           ctx.strokeStyle = ncol(n);

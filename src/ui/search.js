@@ -19,6 +19,10 @@ import { LEVELS } from '../store/labels.js';
 export function revealNode(graph, store, node) {
   const sk = node.sector || 'other';
   if (!store.get().filters.sectors.includes(sk)) store.dispatch({ type: 'toggleSector', sector: sk });
+  const tk = node.tier || 'core';
+  if (Array.isArray(store.get().filters.tiers) && !store.get().filters.tiers.includes(tk)) {
+    store.dispatch({ type: 'toggleTier', tier: tk });
+  }
   const mine = graph.edges.filter((e) => e.src === node.id || e.dst === node.id);
   if (mine.length === 0 || mine.some((e) => causalVisible(graph, e, store.get().filters))) return;
   if (!store.get().filters.weak) store.dispatch({ type: 'toggle', key: 'weak' });
