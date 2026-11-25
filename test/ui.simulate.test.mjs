@@ -23,7 +23,7 @@ function fixture(o = {}) {
   return createGraph(/** @type {any} */ ({
     schemaVersion: 2,
     meta: {},
-    nodes: ids.map((id) => ({ id, name: /** @type {any} */ (names)[id], cat: 'Other' })),
+    nodes: ids.map((id) => ({ id, name: /** @type {any} */ (names)[id] })),
     edges: es.map(([src, dst, sign], i) => ({ id: `e${i}`, src, dst, sign, level: 'A', status: 'open', note: '', r: null, rsrc: '', evidence: [], lag, regime: null })),
     cors: [{ src: 's', dst: 'z', r: 0.7 }],
   }));
@@ -65,7 +65,7 @@ test('simHtml: 경고 4종 라벨 + 클릭 속성', () => {
   const gb = createGraph(/** @type {any} */ ({
     schemaVersion: 2,
     meta: {},
-    nodes: ['p', 'q'].map((id) => ({ id, name: id, cat: 'Other' })),
+    nodes: ['p', 'q'].map((id) => ({ id, name: id })),
     edges: [
       { id: 'b0', src: 'p', dst: 'q', sign: '+', level: 'A', status: 'open', note: '', r: null, rsrc: '', evidence: [] },
       { id: 'b1', src: 'q', dst: 'p', sign: '-', level: 'A', status: 'open', note: '', r: null, rsrc: '', evidence: [] },
@@ -101,7 +101,7 @@ test('simHtml: 경로 단계 수 표시, 영향 없음 메시지', () => {
 /** 선택·실행까지 간 상태 */
 function ran() {
   const g = fixture();
-  const st = createStore(initialState(['Other']), { storage: undefined, nodeIds: g.nodes.map((n) => n.id) });
+  const st = createStore(initialState(['other']), { storage: undefined, nodeIds: g.nodes.map((n) => n.id) });
   st.dispatch({ type: 'select', id: 's' });
   st.dispatch({ type: 'setTab', tab: 'sim' });
   st.dispatch({ type: 'runSim' });
@@ -110,7 +110,7 @@ function ran() {
 
 test('simTabHtml: 폼에 국면 7종(평시 가정 + 6)·깊이 2~6, 실행 전에는 안내', () => {
   const g = fixture();
-  const st = createStore(initialState(['Other']), { storage: undefined });
+  const st = createStore(initialState(['other']), { storage: undefined });
   st.dispatch({ type: 'select', id: 's' });
   const h = simTabHtml(g, st.get());
   for (const label of ['평시', '위기·꼬리위험', '긴축', '완화', '침체', '확장', '평시 가정']) assert.ok(h.includes(label), label);
@@ -146,7 +146,7 @@ function fakeStorage() {
 const IDS = ['a', 'b'];
 
 test('store sim: 탭 전환해도 입력 유지', () => {
-  const s = createStore(initialState(['Other']), { storage: undefined, nodeIds: IDS });
+  const s = createStore(initialState(['other']), { storage: undefined, nodeIds: IDS });
   s.dispatch({ type: 'select', id: 'a' });
   s.dispatch({ type: 'setSim', patch: { sign: -1, regime: 'stress', depth: 5 } });
   s.dispatch({ type: 'runSim' });
@@ -155,7 +155,7 @@ test('store sim: 탭 전환해도 입력 유지', () => {
 });
 
 test('store sim: 입력을 바꾸면 결과 무효(start=null), runSim은 선택 노드로', () => {
-  const s = createStore(initialState(['Other']), { storage: undefined, nodeIds: IDS });
+  const s = createStore(initialState(['other']), { storage: undefined, nodeIds: IDS });
   s.dispatch({ type: 'runSim' });
   assert.equal(s.get().view.sim.start, null, '선택 없으면 실행 안 됨');
   s.dispatch({ type: 'select', id: 'a' });
@@ -167,7 +167,7 @@ test('store sim: 입력을 바꾸면 결과 무효(start=null), runSim은 선택
 });
 
 test('store sim: 잘못된 입력은 무시', () => {
-  const s = createStore(initialState(['Other']), { storage: undefined, nodeIds: IDS });
+  const s = createStore(initialState(['other']), { storage: undefined, nodeIds: IDS });
   s.dispatch({ type: 'setSim', patch: { sign: 0, regime: 'bogus', depth: 9 } });
   assert.deepEqual(s.get().view.sim, { start: null, sign: 1, regime: null, depth: 4 });
   s.dispatch({ type: 'setSim', patch: { depth: 2.5 } });
@@ -179,15 +179,15 @@ test('store sim: 잘못된 입력은 무시', () => {
 
 test('store sim: persist 왕복, 알 수 없는 노드는 버림', () => {
   const st = fakeStorage();
-  const s = createStore(initialState(['Other']), { storage: st, nodeIds: IDS });
+  const s = createStore(initialState(['other']), { storage: st, nodeIds: IDS });
   s.dispatch({ type: 'select', id: 'a' });
   s.dispatch({ type: 'setSim', patch: { sign: -1, regime: 'tightening', depth: 6 } });
   s.dispatch({ type: 'runSim' });
-  const again = createStore(initialState(['Other']), { storage: st, nodeIds: IDS });
+  const again = createStore(initialState(['other']), { storage: st, nodeIds: IDS });
   assert.deepEqual(again.get().view.sim, { start: 'a', sign: -1, regime: 'tightening', depth: 6 });
-  const other = createStore(initialState(['Other']), { storage: st, nodeIds: ['b'] });
+  const other = createStore(initialState(['other']), { storage: st, nodeIds: ['b'] });
   assert.deepEqual(other.get().view.sim, { start: null, sign: -1, regime: 'tightening', depth: 6 });
-  const noIds = createStore(initialState(['Other']), { storage: st });
+  const noIds = createStore(initialState(['other']), { storage: st });
   assert.equal(noIds.get().view.sim.start, null);
 });
 
@@ -200,13 +200,13 @@ test('store sim: 깨진 저장본은 기본값', () => {
   for (const v of bad) {
     const st = fakeStorage();
     st.setItem('cg_view', JSON.stringify(v));
-    const s = createStore(initialState(['Other']), { storage: st, nodeIds: IDS });
+    const s = createStore(initialState(['other']), { storage: st, nodeIds: IDS });
     assert.deepEqual(s.get().view.sim, { start: null, sign: 1, regime: null, depth: 4 });
   }
 });
 
 test('store sim: reduce가 이전 상태를 바꾸지 않는다', () => {
-  const s = createStore(initialState(['Other']), { storage: undefined, nodeIds: IDS });
+  const s = createStore(initialState(['other']), { storage: undefined, nodeIds: IDS });
   s.dispatch({ type: 'select', id: 'a' });
   const before = s.get();
   const snap = JSON.stringify(before);
@@ -220,7 +220,7 @@ test('simHtml 시차 문구: 전부 known / 혼합 / 전부 미상 / 즉시', ()
   const mkg = (es) => createGraph(/** @type {any} */ ({
     schemaVersion: 2,
     meta: {},
-    nodes: ['a', 'b', 'c', 'd'].map((id) => ({ id, name: id, cat: 'Other' })),
+    nodes: ['a', 'b', 'c', 'd'].map((id) => ({ id, name: id })),
     edges: es.map(([src, dst, lag], i) => ({ id: `e${i}`, src, dst, sign: '+', level: 'A', status: 'open', note: '', r: null, rsrc: '', evidence: [], lag, regime: null })),
     cors: [],
   }));

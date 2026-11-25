@@ -1,7 +1,7 @@
 // @ts-check
 // 보기 설정 시트의 '데이터 정보' 블록: 노드·관계선 개수, 등급 분포 막대, 출처·갱신 정보.
 // 값은 전부 graph.json(meta·nodes·edges)에서 계산한다. 지어낸 수치를 쓰지 않는다.
-import { GC, LEVELS, LEVEL_TEXT } from '../store/labels.js';
+import { GC, LEVELS, LEVEL_TEXT, sectorsPresent } from '../store/labels.js';
 
 /** @typedef {import('../types.js').Graph} Graph */
 /** @typedef {import('../types.js').EdgeData} EdgeData */
@@ -51,7 +51,7 @@ export function dataInfoHtml(o) {
   const edges = graph.edges.length;
   const { byLevel, bplus, bminus } = countLevels(graph.edges);
   const iso = isolatedCount(graph);
-  const cat = new Set(graph.nodes.map((n) => n.cat)).size;
+  const sec = sectorsPresent(graph).length;
 
   /** @param {string} k @param {string} v @param {string} [title] */
   const row = (k, v, title) =>
@@ -88,7 +88,7 @@ export function dataInfoHtml(o) {
   return (
     row('노드', `${nf.format(nodes)}개`) +
     row('관계선', `${nf.format(edges)}개`) +
-    row('범주', `${nf.format(cat)}종`) +
+    row('섹터', `${nf.format(sec)}종`) +
     row('무연결 노드', `${nf.format(iso)}개`, '연결이 하나도 없는 노드. 보기 설정의 "연결 없는 점 숨김"이 켜져 있으면 화면에 보이지 않는다.') +
     bar +
     `<div class="fnote">관계선 등급 분포</div>` +

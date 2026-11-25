@@ -8,15 +8,13 @@ import { visible } from '../src/store/select.js';
 import { createGraph } from '../src/engine/graph.js';
 import { validateGraph } from '../src/schema/validate.js';
 
-const CATS = ['Macro_Korea', 'Financial_Market', 'Industry_Semiconductor'];
-
 /** @returns {{getItem:(k:string)=>string|null,setItem:(k:string,v:string)=>void}} */
 function fakeStorage() {
   const map = new Map();
   return { getItem: (k) => (map.has(k) ? map.get(k) : null), setItem: (k, v) => void map.set(k, String(v)) };
 }
 
-/** @param {{id:string,cat:string,sector?:string|null}[]} ns */
+/** @param {{id:string,sector?:string|null}[]} ns */
 function graphOf(ns) {
   return createGraph({
     schemaVersion: 2,
@@ -28,7 +26,7 @@ function graphOf(ns) {
 }
 
 /** @param {string[]} sectors */
-const fresh = (sectors) => createStore(defaultState(CATS, sectors), { storage: fakeStorage() });
+const fresh = (sectors) => createStore(defaultState(sectors), { storage: fakeStorage() });
 
 test('섹터 라벨: 9개 키 전부 이름·색이 있다', () => {
   assert.equal(SECTOR_ORDER.length, 9);
@@ -40,9 +38,9 @@ test('섹터 라벨: 9개 키 전부 이름·색이 있다', () => {
 
 test('sectorsPresent: 데이터에 있는 섹터만, 순서 유지, 없으면 other', () => {
   const g = graphOf([
-    { id: 'a', cat: 'Macro_Korea', sector: 'macro' },
-    { id: 'b', cat: 'Financial_Market', sector: null },
-    { id: 'c', cat: 'Industry_Semiconductor', sector: 'semi' },
+    { id: 'a', sector: 'macro' },
+    { id: 'b', sector: null },
+    { id: 'c', sector: 'semi' },
   ]);
   assert.deepEqual(sectorsPresent(g), ['macro', 'semi', 'other']);
 });
@@ -67,8 +65,8 @@ test('visible: 섹터 필터가 노드·엣지를 거른다', () => {
     schemaVersion: 2,
     meta: { title: 't', version: 'v', generated: '2026-11-23 00:00', nodes: 2, edges: 1, levels: { A: 1 } },
     nodes: [
-      { id: 'a', name: 'a', cat: 'Macro_Korea', sector: 'macro', layer: 1, series: null, desc: '', descSrc: '', aka: [] },
-      { id: 'b', name: 'b', cat: 'Financial_Market', sector: 'finance', layer: 1, series: null, desc: '', descSrc: '', aka: [] },
+      { id: 'a', name: 'a', sector: 'macro', layer: 1, series: null, desc: '', descSrc: '', aka: [] },
+      { id: 'b', name: 'b', sector: 'finance', layer: 1, series: null, desc: '', descSrc: '', aka: [] },
     ],
     edges: [{ id: 'e1', src: 'a', dst: 'b', sign: '+', level: 'A', status: 'open', r: null, rsrc: '', note: '', evidence: [] }],
     cors: [],
@@ -85,7 +83,7 @@ test('validateGraph: sector 허용 키·값 검증', () => {
   const base = {
     schemaVersion: 2,
     meta: { title: 't', version: 'v', generated: '2026-11-23 00:00', nodes: 1, edges: 0, levels: {} },
-    nodes: [{ id: 'a', name: 'a', cat: 'Macro_Korea', sector: 'macro', layer: 1, series: null, desc: '테스트 노드', descSrc: 'test', aka: [] }],
+    nodes: [{ id: 'a', name: 'a', sector: 'macro', layer: 1, series: null, desc: '테스트 노드', descSrc: 'test', aka: [] }],
     edges: [],
     cors: [],
   };
@@ -93,4 +91,19 @@ test('validateGraph: sector 허용 키·값 검증', () => {
   const bad = structuredClone(base);
   bad.nodes[0].sector = 'bogus';
   assert.ok(validateGraph(bad).errors.some((e) => e.includes('sector')));
+});
+test('구버전 cat은 필수도 검증 대상도 아니다(무시)', () => {
+  const g = structuredClone({
+    schemaVersion: 2,
+    meta: { title: 't', version: 'v', generated: '2026-11-25 00:00', nodes: 2, edges: 0, levels: {} },
+    nodes: [
+      { id: 'a', name: 'a', sector: 'macro', layer: 1, series: null, aka: [] },
+      { id: 'b', name: 'b', cat: 'Whatever_Old', layer: 1, series: null, aka: [] },
+    ],
+    edges: [],
+    cors: [],
+  });
+  assert.deepEqual(validateGraph(g).errors, []);
+  const graph = createGraph(g);
+  assert.deepEqual(sectorsPresent(graph), ['macro', 'other']);
 });

@@ -2,7 +2,7 @@
 // 노드 상세 시트: 헤더·탭·항목 목록·관계도. 원본 render()·item()·cri()와 같은 문구.
 // 클릭은 이벤트 위임(data-act/data-id). inline onclick은 쓰지 않는다.
 // 루프·경로 탭: 계산·HTML은 explore.js. 경로 입력창은 재렌더 때 유지하고 제안·결과만 갈아 끼운다.
-import { GC, CC, CN, DIR_BTN, levelText, levelColor } from '../store/labels.js';
+import { GC, SN, SECC, DIR_BTN, levelText, levelColor } from '../store/labels.js';
 import { causalVisible } from '../store/select.js';
 import { SIGN_LABEL } from '../engine/graph.js';
 import { esc, flatHtml } from '../render/flatmap.js';
@@ -124,8 +124,8 @@ export function initPanel(o) {
     const weakBtn = hiddenWeak ? '<button class="chip more" data-act="weak">B- 약한 연결도 보기</button>' : '';
     const cr = graph.cors.filter((c) => c.src === n.id || c.dst === n.id);
 
-    nt.innerHTML = `<span class="dot" style="background:${CC[n.cat]}"></span>${esc(n.name)}`;
-    nsub.textContent = CN[n.cat];
+    nt.innerHTML = `<span class="dot" style="background:${SECC[/** @type {'other'} */ (n.sector || 'other')]}"></span>${esc(n.name)}`;
+    nsub.textContent = SN[/** @type {'other'} */ (n.sector || 'other')] || '';
 
     ndesc.innerHTML = nodeDescHtml(n);
 

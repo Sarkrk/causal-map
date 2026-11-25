@@ -1,6 +1,6 @@
 // @ts-check
-// 검색창과 제안 목록. 원본 q.oninput·sug.onclick과 같은 동작(상위 8개, 범주가 꺼져 있으면 켜고 선택).
-import { CC, CN } from '../store/labels.js';
+// 검색창과 제안 목록. 상위 8개, 그 노드의 섹터가 꺼져 있으면 켜고 선택한다.
+import { SN, SECC } from '../store/labels.js';
 import { esc } from '../render/flatmap.js';
 import { searchNodes } from '../engine/graph.js';
 import { causalVisible } from '../store/select.js';
@@ -10,14 +10,15 @@ import { LEVELS } from '../store/labels.js';
 /** @typedef {import('../types.js').Graph} Graph */
 
 /**
- * 노드를 열기 전에, 그 노드가 속한 범주를 켜고, 보이는 연결이 하나도 없으면 약한(B-)·후보·논쟁 연결도 켠다.
+ * 노드를 열기 전에, 그 노드가 속한 섹터를 켜고, 보이는 연결이 하나도 없으면 약한(B-)·후보·논쟁 연결도 켠다.
  * @param {Graph} graph
  * @param {Store} store
  * @param {import('../types.js').NodeData} node
  * @returns {void}
  */
 export function revealNode(graph, store, node) {
-  if (!store.get().filters.cats.includes(node.cat)) store.dispatch({ type: 'toggleCat', cat: node.cat });
+  const sk = node.sector || 'other';
+  if (!store.get().filters.sectors.includes(sk)) store.dispatch({ type: 'toggleSector', sector: sk });
   const mine = graph.edges.filter((e) => e.src === node.id || e.dst === node.id);
   if (mine.length === 0 || mine.some((e) => causalVisible(graph, e, store.get().filters))) return;
   if (!store.get().filters.weak) store.dispatch({ type: 'toggle', key: 'weak' });
@@ -48,7 +49,7 @@ export function initSearch(o) {
       m
         .map(
           (n) =>
-            `<div data-id="${esc(n.id)}"><span class="dot" style="background:${CC[n.cat]}"></span>${esc(n.name)} <span class="sub" style="margin:0 0 0 auto">${CN[n.cat]}</span></div>`,
+            `<div data-id="${esc(n.id)}"><span class="dot" style="background:${SECC[/** @type {'other'} */ (n.sector || 'other')]}"></span>${esc(n.name)} <span class="sub" style="margin:0 0 0 auto">${SN[/** @type {'other'} */ (n.sector || 'other')] || ''}</span></div>`,
         )
         .join('') || '<div class="sub">검색 결과 없음</div>';
     sug.style.display = 'block';

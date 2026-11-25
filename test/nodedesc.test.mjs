@@ -81,7 +81,7 @@ test('migrate: v2 입력은 그대로 같은 객체', () => {
 });
 
 /** @param {string} name @param {string[]} [aka] @returns {any} */
-const mk = (name, aka) => ({ id: name, name, cat: 'Policy', ...(aka ? { aka } : {}) });
+const mk = (name, aka) => ({ id: name, name, ...(aka ? { aka } : {}) });
 
 test('searchNodes: aka 대소문자 무시 부분일치, name 일치 우선', () => {
   const nodes = [mk('가계부채', ['Household Debt']), mk('정책금리', ['기준금리', 'Base Rate']), mk('기준금리 기대')];

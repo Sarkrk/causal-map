@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createStore, initialState } from '../src/store/store.js';
 
-const CATS = ['macro', 'market'];
+const SECS = ['macro', 'semi'];
 const IDS = ['a', 'b', 'c'];
 
 function fakeStorage(init = {}) {
@@ -16,7 +16,7 @@ function fakeStorage(init = {}) {
   };
 }
 
-const mk = (storage = fakeStorage(), nodeIds = IDS) => createStore(initialState(CATS), { storage, nodeIds });
+const mk = (storage = fakeStorage(), nodeIds = IDS) => createStore(initialState(SECS), { storage, nodeIds });
 
 /** 경로 탭 상태를 만든다: a 선택 → path 탭 → 도착 b → 반전 → 검색어 */
 function pathState(s) {
@@ -87,7 +87,7 @@ test('저장본의 알 수 없는 노드 id는 복원 때 버린다(반전도 �
   assert.equal(r.pathTo, null);
   assert.equal(r.pathRev, false);
   // nodeIds를 안 주면 검증할 수 없으므로 복원하지 않는다
-  const none = createStore(initialState(CATS), { storage: st }).get().view;
+  const none = createStore(initialState(SECS), { storage: st }).get().view;
   assert.equal(none.pathTo, null);
 });
 
@@ -144,7 +144,7 @@ test('reduce는 입력 상태를 바꾸지 않는다(깊은 동결 상태로 모
     { type: 'restoreView', selected: 'a', tab: 'path', pathTo: 'b' },
   ];
   for (const a of actions) {
-    const t = createStore(initialState(CATS), { storage: fakeStorage(), nodeIds: IDS });
+    const t = createStore(initialState(SECS), { storage: fakeStorage(), nodeIds: IDS });
     pathState(t);
     deepFreeze(t.get());
     // 동결된 상태를 바꾸려 하면 strict 모드(ESM)에서 TypeError가 난다

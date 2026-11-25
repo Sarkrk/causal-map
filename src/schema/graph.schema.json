@@ -54,8 +54,7 @@
         "type": "object",
         "required": [
           "id",
-          "name",
-          "cat"
+          "name"
         ],
         "additionalProperties": false,
         "properties": {
@@ -68,26 +67,11 @@
             "minLength": 1
           },
           "cat": {
-            "enum": [
-              "Real_Economy",
-              "Inflation_Labor",
-              "Policy",
-              "Financial_Market",
-              "External_Sector",
-              "Macro_Korea",
-              "Macro_Global",
-              "Industry_AI",
-              "Industry_Semiconductor",
-              "Industry_Bio",
-              "Industry_Defense",
-              "Labor_Demographics",
-              "Institutions",
-              "Environment",
-              "Fiscal",
-              "Money_Credit",
-              "Trade_Global",
-              "Other"
-            ]
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "구버전(v1 이하) 호환용. 앱은 읽지 않고 무시한다. 새 데이터는 sector만 쓴다."
           },
           "layer": {
             "type": [

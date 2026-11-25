@@ -19,7 +19,7 @@ import { findPaths, signProduct } from '../src/engine/paths.js';
  * @returns {NodeData}
  */
 function mkNode(id) {
-  return { id, name: id, cat: 'Other' };
+  return { id, name: id };
 }
 
 /**

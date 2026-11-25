@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createStore, initialState } from '../src/store/store.js';
 import { visible, causalVisible, highlight } from '../src/store/select.js';
-import { categoriesPresent } from '../src/store/labels.js';
+import { sectorsPresent } from '../src/store/labels.js';
 import { createGraph } from '../src/engine/graph.js';
 import { neighborhood } from '../src/engine/traverse.js';
 
@@ -22,13 +22,13 @@ function fakeStorage(init = {}) {
 }
 
 const graph = createGraph(RAW);
-const cats = categoriesPresent(graph);
-const fresh = (storage = fakeStorage()) => createStore(initialState(cats), { storage });
+const sectors = sectorsPresent(graph);
+const fresh = (storage = fakeStorage()) => createStore(initialState(sectors), { storage });
 
 test('초기값은 원본 기본값과 같다', () => {
   const st = fresh().get();
   assert.deepEqual(st.filters.levels, ['A', 'B', 'C', 'D']);
-  assert.deepEqual(st.filters.cats, cats);
+  assert.deepEqual(st.filters.sectors, sectors);
   assert.equal(st.filters.thr, 0);
   assert.equal(st.filters.showNR, true);
   assert.equal(st.filters.showCor, false);
@@ -45,10 +45,10 @@ test('각 action이 상태를 바꾸고 이전 객체는 그대로 둔다', () =
   s.dispatch({ type: 'toggleLevel', level: 'D' });
   assert.deepEqual(s.get().filters.levels, ['A', 'B', 'C', 'D']);
 
-  s.dispatch({ type: 'toggleCat', cat: cats[0] });
-  assert.equal(s.get().filters.cats.includes(cats[0]), false);
-  s.dispatch({ type: 'toggleCat', cat: cats[0] });
-  assert.equal(s.get().filters.cats.includes(cats[0]), true);
+  s.dispatch({ type: 'toggleSector', sector: sectors[0] });
+  assert.equal(s.get().filters.sectors.includes(sectors[0]), false);
+  s.dispatch({ type: 'toggleSector', sector: sectors[0] });
+  assert.equal(s.get().filters.sectors.includes(sectors[0]), true);
 
   s.dispatch({ type: 'setThr', value: 0.3 });
   assert.equal(s.get().filters.thr, 0.3);
@@ -118,7 +118,7 @@ test('filters·prefs·hop·dir만 저장하고 selected·tab·flatAll은 저장�
 test('저장된 값이 있으면 복원한다', () => {
   const stored = {
     cg_view: JSON.stringify({
-      filters: { levels: ['A'], cats: cats.slice(0, 2), thr: 0.2, showNR: false, showCor: true },
+      filters: { levels: ['A'], sectors: sectors.slice(0, 2), thr: 0.2, showNR: false, showCor: true },
       prefs: { labAll: true, hideOrph: false, autoSpin: false, wobble: false },
       view: { hop: 2, dir: 'up' },
     }),
@@ -138,7 +138,7 @@ test('깨진 저장값은 무시하고 기본값을 쓴다', () => {
     '{not json',
     'null',
     '[1,2]',
-    JSON.stringify({ filters: { levels: ['Z'], thr: 5, cats: ['Nope'] }, view: { hop: 7, dir: 'sideways' } }),
+    JSON.stringify({ filters: { levels: ['Z'], thr: 5, sectors: ['Nope'] }, view: { hop: 7, dir: 'sideways' } }),
   ];
   for (const raw of cases) {
     const st = fresh(fakeStorage({ cg_view: raw })).get();
@@ -158,7 +158,7 @@ test('저장소가 예외를 던져도 화면 상태는 동작한다', () => {
       throw new Error('quota');
     },
   };
-  const s = createStore(initialState(cats), { storage: bad });
+  const s = createStore(initialState(sectors), { storage: bad });
   s.dispatch({ type: 'setHop', hop: 2 });
   assert.equal(s.get().view.hop, 2);
 });
@@ -232,7 +232,7 @@ test('highlight: 상관선이 켜지면 both가 상관 이웃도 포함한다', 
 
 test('resetFilters: 넘긴 기본 필터로 돌아가고 weak 토글이 동작한다', async () => {
   const { defaultState } = await import('../src/store/store.js');
-  const base = defaultState(['Other']);
+  const base = defaultState(['other']);
   assert.deepEqual(base.filters.levels, ['A', 'B']);
   assert.equal(base.filters.weak, false);
   const s = createStore(base, { storage: undefined });

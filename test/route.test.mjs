@@ -4,13 +4,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createStore, initialState } from '../src/store/store.js';
-import { categoriesPresent } from '../src/store/labels.js';
+import { sectorsPresent } from '../src/store/labels.js';
 import { createGraph } from '../src/engine/graph.js';
 import { parseHash, toHash, initRoute, shareLink } from '../src/ui/route.js';
 
 const RAW = JSON.parse(readFileSync(new URL('./fixtures/graph.v1.json', import.meta.url), 'utf8'));
 const graph = createGraph(RAW);
-const cats = categoriesPresent(graph);
+const sectors = sectorsPresent(graph);
 const BASE = 'https://sarkrk.github.io/causal-map/';
 // 실제 노드 이름 중 기호가 들어간 것들(·, /, (), −, 공백)
 const SPECIAL = [
@@ -93,7 +93,7 @@ function fakeWin(start = '') {
 /** @param {string} start */
 function setup(start = '') {
   const win = fakeWin(start);
-  const store = createStore(initialState(cats), { storage: fakeStorage() });
+  const store = createStore(initialState(sectors), { storage: fakeStorage() });
   /** @type {string[]} */
   const opened = [];
   const route = initRoute({
@@ -244,7 +244,7 @@ test('깨진 주소로 뒤로 가면 선택을 해제하고 주소를 정리한�
 
 test('dispose 뒤에는 상태가 바뀌어도 주소를 건드리지 않는다', () => {
   const win = fakeWin();
-  const store = createStore(initialState(cats), { storage: fakeStorage() });
+  const store = createStore(initialState(sectors), { storage: fakeStorage() });
   const r = initRoute({ graph, store, win, onOpenNode: () => {} });
   r.dispose();
   const before = win.log.pushes + win.log.replaces;

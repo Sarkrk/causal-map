@@ -25,7 +25,7 @@ import {
  * @typedef {Object} Body
  * @property {NodeData} d
  * @property {string} id   d.id (물리 계산용)
- * @property {string} cat  d.cat (물리 계산용)
+ * @property {string} sector  d.sector || 'other' (물리 계산용)
  * @property {number} deg
  * @property {number} rad
  * @property {number} ph
@@ -148,7 +148,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
   const bodies = graph.nodes.map((d, i) => {
     const deg = graph.deg.get(d.id) ?? 0;
     return {
-      d, id: d.id, cat: d.sector || 'other', deg, rad: 3.5 + Math.sqrt(deg) * 1.9, ph: i * 2.399,
+      d, id: d.id, sector: d.sector || 'other', deg, rad: 3.5 + Math.sqrt(deg) * 1.9, ph: i * 2.399,
       x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, fx: null, fy: null, fz: null,
       sx: 0, sy: 0, sf: 1, sz: 0, fog: 1,
     };
@@ -438,8 +438,8 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
       /** @type {Map<string, number>} */
       const agg = new Map();
       for (const l of VL) {
-        if (l.k !== 'c' || l.a.cat === l.b.cat) continue;
-        const key = l.a.cat < l.b.cat ? l.a.cat + '|' + l.b.cat : l.b.cat + '|' + l.a.cat;
+        if (l.k !== 'c' || l.a.sector === l.b.sector) continue;
+        const key = l.a.sector < l.b.sector ? l.a.sector + '|' + l.b.sector : l.b.sector + '|' + l.a.sector;
         agg.set(key, (agg.get(key) || 0) + 1);
       }
       const hp = new Map(hubP.map((h) => [h.k, h]));

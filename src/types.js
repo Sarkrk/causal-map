@@ -2,7 +2,6 @@
 // 공유 타입 정의(JSDoc). 런타임 코드 없음. 다른 모듈은 `import './types.js'` 없이
 // `/** @typedef {import('../types.js').Edge} Edge */` 형태로 참조한다.
 
-/** @typedef {'Real_Economy'|'Inflation_Labor'|'Policy'|'Financial_Market'|'External_Sector'|'Macro_Korea'|'Macro_Global'|'Industry_AI'|'Industry_Semiconductor'|'Industry_Bio'|'Industry_Defense'|'Labor_Demographics'|'Institutions'|'Environment'|'Fiscal'|'Money_Credit'|'Trade_Global'|'Other'} Category */
 /** @typedef {'+'|'-'|'±'} Sign   // 데이터는 ASCII '-'. 화면 표시는 '−'(U+2212). */
 /** @typedef {'macro'|'finance'|'semi'|'bio'|'energy'|'trade'|'policy'|'labor'|'other'} Sector   // 구심점 섹터(11/23). 없으면 other 취급. */
 /** @typedef {'A'|'B'|'C'|'D'} Level */
@@ -13,8 +12,7 @@
  * @typedef {Object} NodeData
  * @property {string} id      안정 ID (v1에서는 name과 같음. 코드는 반드시 id로 참조)
  * @property {string} name    표시 이름
- * @property {Category} cat
- * @property {Sector|null} [sector]   구심점 섹터(11/23 추가, 없으면 other 취급)
+ * @property {Sector|null} [sector]   구심점 섹터(없으면 other 취급). 옛 'cat'은 무시한다.
  * @property {number|null} [layer]
  * @property {string|null} [series]
  * @property {string|null} [desc]     짧은 설명(1~240자)

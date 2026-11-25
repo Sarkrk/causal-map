@@ -12,6 +12,12 @@
 
 ## 날짜별
 
+### 2026-11-25
+
+- **작업**: 옛 '범주(cat)'를 앱·DB·도구에서 완전히 빼고 '구심점 섹터(sector)' 하나로 통일. 앱은 `CN`/`CC`/`CATEGORY_ORDER`/`categoriesPresent`/`toggleCat`/`filters.cats`를 삭제하고 색·3D 배치 기준·필터 칩·검색 제안·노드 패널 부제·데이터 정보('섹터 9종')를 모두 `sector`(없으면 `other`)로 바꿨다. 스키마는 `cat`을 필수에서 빼고 구버전 데이터 호환용 선택 키(문자열|null, 값은 무시)로만 남겼으며, v1 픽스처는 그대로 통과한다. 데이터 파이프라인 `causal_app.py`는 `cat`을 내보내지 않고 `sector`를 항상 출력하며, DB `node` 테이블의 `cat` 컬럼도 삭제했다(백업 `_cache/graph.db.bak_20261125`, 삭제 직전본 `_cache/graph.db.bak_20261125_pre_dropcat`). 섹터가 비어 있던 노드 2개는 `other`로 채웠다. HTML 산출물 도구(`causal_force.py`, `causal_mermaid.py`, `causal_graph_mobile.py`)의 범례·색·필터도 섹터 9종으로 교체.
+
+- **검증**: 앱 테스트 275개 전부 통과, `causal_app.py build` 검증 통과(노드 983·엣지 1391), `causal_audit.py` 'node sector 미분류 0', `causal_quality.py` 정상 출력, HTML 3종 `node --check` 구문 통과·`cat` 문자열 0건, 로컬 서버에서 앱 렌더·검색·섹터 칩 토글 확인. 배포는 하지 않았다.
+
 ### 2026-10-10
 
 - **작업**: 리서치 패널(팩트베이스 → 팩트체크 → 분야 분석 → 종합 → 레드팀) 운영 시작

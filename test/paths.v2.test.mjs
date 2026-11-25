@@ -65,7 +65,7 @@ test('regimeFilter: regime 키가 없는 엣지는 상시 활성', () => {
 
 /** a→d 로 가는 여러 경로 */
 function diamond() {
-  const nodes = ['a', 'b', 'c', 'd', 'e'].map((id) => ({ id, name: id, cat: 'Other' }));
+  const nodes = ['a', 'b', 'c', 'd', 'e'].map((id) => ({ id, name: id }));
   const edges = [
     E({ id: '1', src: 'a', dst: 'd', level: 'C', lag: 'immediate' }), // conf .5, lag 0, len 1
     E({ id: '2', src: 'a', dst: 'b', level: 'A', lag: 'short' }),

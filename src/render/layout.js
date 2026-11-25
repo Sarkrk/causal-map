@@ -8,7 +8,7 @@ import { nodeRng, nextSeed } from './rng.js';
 /**
  * @typedef {Object} PhysBody
  * @property {string} id
- * @property {string} cat
+ * @property {string} sector
  * @property {number} rad
  * @property {number} x
  * @property {number} y
@@ -29,7 +29,7 @@ import { nodeRng, nextSeed } from './rng.js';
  * @property {number} [str]  스프링 세기 재정의(없으면 k별 기본값). 섹터 간 교차 엣지는 약하게 준다.
  */
 
-/** @typedef {Record<string, number[]>} Centers 범주 → [x,y,z] 기준 위치 */
+/** @typedef {Record<string, number[]>} Centers 섹터 → [x,y,z] 기준 위치 */
 /** @typedef {Record<string, [number, number, number]>} SavedPos id → [x,y,z] */
 
 /** 기본 시드. 앱을 열 때마다 같은 모양이 나온다. */
@@ -271,13 +271,13 @@ export function createLayout(o) {
   /** @type {PhysLink[]} */
   let links = o.links ?? [];
 
-  /** @param {string} cat */
-  const center = (cat) => centers[cat] || [0, 0, 0];
+  /** @param {string} sector */
+  const center = (sector) => centers[sector] || centers.other || [0, 0, 0];
 
   /** 시드 좌표를 모든 노드에 쓴다(속도 0). 노드마다 id에서 난수를 따로 뽑는다. */
   function seedPositions() {
     for (const n of bodies) {
-      const c = center(n.cat);
+      const c = center(n.sector);
       const r = nodeRng(curSeed, n.id);
       n.x = c[0] + (r() - 0.5) * 140;
       n.y = c[1] + (r() - 0.5) * 140;
@@ -326,7 +326,7 @@ export function createLayout(o) {
       l.b.vz -= dz * f;
     }
     for (const n of A) {
-      const c = center(n.cat);
+      const c = center(n.sector);
       n.vx += ((c[0] - n.x) * centerPull - n.x * centerDrift) * al;
       n.vy += ((c[1] - n.y) * centerPull - n.y * centerDrift) * al;
       n.vz += ((c[2] - n.z) * centerPull - n.z * centerDrift) * al;

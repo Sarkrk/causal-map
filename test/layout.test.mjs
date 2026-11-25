@@ -16,19 +16,19 @@ import {
   DEFAULT_SEED,
 } from '../src/render/layout.js';
 import { mulberry32, nodeRng, nextSeed, hashString } from '../src/render/rng.js';
-import { categoriesPresent } from '../src/store/labels.js';
+import { SECTOR_ORDER } from '../src/store/labels.js';
 
-const CATS = ['Real_Economy', 'Inflation_Labor', 'Policy', 'Financial_Market', 'External_Sector', 'Industry_AI', 'Other'];
+const SECS = SECTOR_ORDER.slice(0, 7);
 
 /**
- * 원본 canvas3d.js의 CP(범주 기준 위치)와 같은 식.
- * @param {string[]} cats
+ * 원본 canvas3d.js의 CP(섹터 기준 위치)와 같은 식.
+ * @param {string[]} secs
  */
-function centersFor(cats) {
+function centersFor(secs) {
   /** @type {Record<string, number[]>} */
   const CP = {};
-  cats.forEach((k, i) => {
-    const y = 1 - ((i + 0.5) / cats.length) * 2;
+  secs.forEach((k, i) => {
+    const y = 1 - ((i + 0.5) / secs.length) * 2;
     const r = Math.sqrt(1 - y * y);
     const a = i * 2.399;
     CP[k] = [Math.cos(a) * r * 170, y * 170, Math.sin(a) * r * 170];
@@ -36,9 +36,9 @@ function centersFor(cats) {
   return CP;
 }
 
-/** @param {string} id @param {string} cat @param {number} deg */
-function body(id, cat, deg = 0) {
-  return { id, cat, rad: 3.5 + Math.sqrt(deg) * 1.9, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, fx: null, fy: null, fz: null };
+/** @param {string} id @param {string} sector @param {number} deg */
+function body(id, sector, deg = 0) {
+  return { id, sector, rad: 3.5 + Math.sqrt(deg) * 1.9, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, fx: null, fy: null, fz: null };
 }
 
 /** 합성 그래프: n개 노드, m개 무작위 인과 엣지. */
@@ -55,9 +55,9 @@ function synth(n, m, seed) {
     degs[b]++;
   }
   const bodies = [];
-  for (let i = 0; i < n; i++) bodies.push(body('s' + i, CATS[i % CATS.length], degs[i]));
+  for (let i = 0; i < n; i++) bodies.push(body('s' + i, SECS[i % SECS.length], degs[i]));
   const links = pairs.map(([a, b]) => ({ k: /** @type {'c'} */ ('c'), a: bodies[a], b: bodies[b] }));
-  return { bodies, links, cent: centersFor(CATS) };
+  return { bodies, links, cent: centersFor(SECS) };
 }
 
 /** 픽스처(실데이터 83노드)에서 물리 입력을 만든다. */
@@ -67,12 +67,11 @@ function fixture() {
     deg.set(e.src, (deg.get(e.src) ?? 0) + 1);
     deg.set(e.dst, (deg.get(e.dst) ?? 0) + 1);
   }
-  const bodies = v1.nodes.map((n) => body(n.id, n.cat, deg.get(n.id) ?? 0));
+  const bodies = v1.nodes.map((n, i) => body(n.id, SECS[i % SECS.length], deg.get(n.id) ?? 0));
   const byId = new Map(bodies.map((b) => [b.id, b]));
   const links = v1.edges.map((e) => ({ k: /** @type {'c'} */ ('c'), a: byId.get(e.src), b: byId.get(e.dst) }));
   const cors = (v1.cors ?? []).map((c) => ({ k: /** @type {'r'} */ ('r'), a: byId.get(c.src), b: byId.get(c.dst) }));
-  const cats = categoriesPresent({ nodes: v1.nodes });
-  return { bodies, links: links.concat(cors.filter((l) => l.a && l.b)), cent: centersFor(cats) };
+  return { bodies, links: links.concat(cors.filter((l) => l.a && l.b)), cent: centersFor(SECS) };
 }
 
 /**
@@ -120,7 +119,7 @@ function refTick(st) {
     l.b.vz -= dz * f;
   });
   A.forEach((n) => {
-    const c = st.cent[n.cat] || [0, 0, 0];
+    const c = st.cent[n.sector] || [0, 0, 0];
     n.vx += ((c[0] - n.x) * 0.004 - n.x * 0.0015) * alpha;
     n.vy += ((c[1] - n.y) * 0.004 - n.y * 0.0015) * alpha;
     n.vz += ((c[2] - n.z) * 0.004 - n.z * 0.0015) * alpha;
@@ -232,7 +231,7 @@ test('BH 힘: 무작위 구름(300·1000노드)에서 정확 힘과 평균 상�
   for (const n of [300, 1000]) {
     const bs = [];
     for (let i = 0; i < n; i++) {
-      const b = body('u' + i, CATS[i % 7], Math.floor(r() * 6));
+      const b = body('u' + i, SECS[i % SECS.length], Math.floor(r() * 6));
       b.x = (r() - 0.5) * 500;
       b.y = (r() - 0.5) * 500;
       b.z = (r() - 0.5) * 500;
@@ -303,16 +302,16 @@ test('같은 시드 → 같은 좌표; 다른 시드 → 다른 좌표', () => {
 });
 
 test('노드 하나 추가해도 기존 노드의 초기 좌표는 그대로다(순서가 바뀌어도)', () => {
-  const cats = CATS;
+  const secs = SECS;
   const base = [];
-  for (let i = 0; i < 60; i++) base.push(body('k' + i, cats[i % 7]));
+  for (let i = 0; i < 60; i++) base.push(body('k' + i, secs[i % secs.length]));
   const bA = base.map((b) => ({ ...b }));
-  const layA = createLayout({ bodies: bA, centers: centersFor(cats), seed: 31 });
+  const layA = createLayout({ bodies: bA, centers: centersFor(secs), seed: 31 });
   const posA = Object.fromEntries(bA.map((b) => [b.id, [b.x, b.y, b.z]]));
 
-  // 같은 범주의 새 노드를 맨 앞에 추가
-  const bB = [body('new-x', cats[0]), ...base.map((b) => ({ ...b }))];
-  createLayout({ bodies: bB, centers: centersFor(cats), seed: 31 });
+  // 같은 섹터의 새 노드를 맨 앞에 추가
+  const bB = [body('new-x', secs[0]), ...base.map((b) => ({ ...b }))];
+  createLayout({ bodies: bB, centers: centersFor(secs), seed: 31 });
   for (const b of bB) {
     if (b.id === 'new-x') continue;
     assert.deepEqual([b.x, b.y, b.z], posA[b.id], `node ${b.id} moved`);
@@ -360,7 +359,7 @@ test('저장/복원: 같은 버전이면 저장 좌표를 되살리고, 없는 �
 
   // 새 실행: 노드 하나 추가된 데이터, 같은 버전
   const h = synth(40, 60, 8);
-  h.bodies.push(body('extra', CATS[0]));
+  h.bodies.push(body('extra', SECS[0]));
   const lay2 = createLayout({ bodies: h.bodies, centers: h.cent, seed: saved.seed, restore: saved.pos, alpha: 0.05 });
   assert.equal(lay2.alpha, 0.05);
   for (const b of h.bodies) {
@@ -368,7 +367,7 @@ test('저장/복원: 같은 버전이면 저장 좌표를 되살리고, 없는 �
     const p = saved.pos[b.id];
     assert.deepEqual([b.x, b.y, b.z], p);
   }
-  // 없는 노드('extra')는 시드 좌표(0 근처 + 범주 중심)
+  // 없는 노드('extra')는 시드 좌표(0 근처 + 섹터 중심)
   const ex = h.bodies[h.bodies.length - 1];
   assert.ok(Number.isFinite(ex.x) && Number.isFinite(ex.y) && Number.isFinite(ex.z));
 });

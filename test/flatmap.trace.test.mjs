@@ -10,12 +10,12 @@ import { flatHtml } from '../src/render/flatmap.js';
 const RAW = {
   meta: { version: 'test' },
   nodes: [
-    { id: 'hub', name: '허브', cat: 'macro' },
-    { id: 'x', name: '원인X', cat: 'macro' },
-    { id: 'y', name: '결과Y', cat: 'macro' },
-    { id: 'z', name: '양방향Z', cat: 'macro' },
-    { id: 'w', name: '원인W', cat: 'macro' },
-    { id: 'q', name: '<b>"&Q', cat: 'macro' },
+    { id: 'hub', name: '허브', sector: 'macro' },
+    { id: 'x', name: '원인X', sector: 'macro' },
+    { id: 'y', name: '결과Y', sector: 'macro' },
+    { id: 'z', name: '양방향Z', sector: 'macro' },
+    { id: 'w', name: '원인W', sector: 'macro' },
+    { id: 'q', name: '<b>"&Q', sector: 'macro' },
   ],
   edges: [
     { id: 'e1', src: 'x', dst: 'hub', sign: '+', level: 'A', r: 0.5 },
@@ -30,11 +30,11 @@ const RAW = {
 // flatHtml이 브라우저 전역 innerWidth를 읽는다
 globalThis.innerWidth = 400;
 const graph = createGraph(/** @type {any} */ (RAW));
-const cats = ['macro'];
+const sectors = ['macro'];
 
 /** @param {any} [view] */
 const stateWith = (view = {}) => {
-  const st = initialState(cats);
+  const st = initialState(sectors);
   return { ...st, view: { ...st.view, ...view } };
 };
 

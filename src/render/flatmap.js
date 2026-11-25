@@ -1,6 +1,6 @@
 // @ts-check
 // 관계도(SVG) 빌드. 원본 flat()·wrap()·esc()와 같은 배치·수치·문구.
-import { CC, GC } from '../store/labels.js';
+import { GC, SECC } from '../store/labels.js';
 import { causalVisible } from '../store/select.js';
 import { SIGN_LABEL } from '../engine/graph.js';
 
@@ -164,7 +164,7 @@ export function flatHtml(graph, state, nid) {
       const [X, Y] = /** @type {number[]} */ (pos[i].get(x.id));
       const me = x.id === nid;
       const ls = wrap(x.name, hop === 1 && bw > 100 ? Math.floor(bw / 12) : 7);
-      const col = CC[x.cat];
+      const col = SECC[/** @type {'other'} */ (x.sector || 'other')] || '#8a9bb0';
       const attr = me ? '' : ` data-act="go" data-id="${esc(x.id)}"`;
       const ncls = trCls(trNodes.has(x.id));
       sv +=
@@ -199,7 +199,7 @@ export function flatHtml(graph, state, nid) {
     head +
     (reachable
       ? `<div class="fl"><svg width="${hop === 1 ? '100%' : Wd}" ${hop === 1 ? `style="min-width:${Wd}px"` : ''} height="${Hd}" viewBox="0 0 ${Wd} ${Hd}" xmlns="http://www.w3.org/2000/svg"><defs>${mk}</defs>${sv}</svg></div>`
-      : '<p class="sub">표시 중인 연결이 없습니다. ☰에서 등급·범주를 켜 보세요.</p>') +
+      : '<p class="sub">표시 중인 연결이 없습니다. ☰에서 등급·섹터를 켜 보세요.</p>') +
     (more > 0 || flatAll
       ? `<button class="chip" style="margin-top:6px" data-act="flatall">${flatAll ? '핵심만 보기' : `나머지 ${more}개 더 보기`}</button>`
       : '') +

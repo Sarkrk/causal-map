@@ -35,7 +35,6 @@ test('migrate(v0) 결과가 graph.v1.json 픽스처와 일치', () => {
     const b = v1.nodes[i];
     assert.equal(a.id, b.id);
     assert.equal(a.name, b.name);
-    assert.equal(a.cat, b.cat);
   }
   assert.equal(g.edges.length, v1.edges.length);
   for (let i = 0; i < v1.edges.length; i++) {
@@ -101,13 +100,20 @@ test('validate: 자기루프 → ok=false', () => {
   assert.ok(r.errors.some((m) => m.startsWith(`edge ${id}: self-loop`)), r.errors.join('\n'));
 });
 
-test('validate: 잘못된 cat → ok=false', () => {
+test('validate: 잘못된 sector → ok=false', () => {
   const g = cloneV1();
   const name = g.nodes[0].id;
-  g.nodes[0].cat = 'Not_A_Category';
+  g.nodes[0].sector = 'Not_A_Sector';
   const r = validateGraph(g);
   assert.equal(r.ok, false);
-  assert.ok(r.errors.some((m) => m.includes(`node "${name}": cat "Not_A_Category" invalid`)), r.errors.join('\n'));
+  assert.ok(r.errors.some((m) => m.includes(`node "${name}": sector "Not_A_Sector" invalid`)), r.errors.join('\n'));
+});
+
+test('validate: cat 없이도 통과하고, 옛 cat 값은 무시한다', () => {
+  const g = cloneV1();
+  g.nodes[0].cat = 'Old_Category_Value';
+  g.nodes[0].sector = 'macro';
+  assert.deepEqual(validateGraph(g).errors, []);
 });
 
 test('validate: 같은 (src,dst) 쌍 중복 → ok=false', () => {

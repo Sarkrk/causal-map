@@ -2,14 +2,13 @@
 // 단일 상태 저장소. dispatch마다 새 상태 객체를 만들고 이전 객체는 바꾸지 않는다.
 // filters·prefs·view.hop·dir·pathTo·pathRev·pathQuery·search·sim을 storage(JSON)에 저장한다. selected·tab·flatAll·trace는 저장하지 않는다.
 // 복원 때 pathTo는 nodeIds(알려진 노드 id 목록)가 주어지고 그 안에 있을 때만 살린다.
-import { LEVELS, CATEGORY_ORDER, SECTOR_ORDER } from './labels.js';
+import { LEVELS, SECTOR_ORDER } from './labels.js';
 import { REGIMES } from '../schema/v2.js';
 
 /**
  * @typedef {Object} Filters
  * @property {string[]} levels
- * @property {string[]} cats
- * @property {string[]} sectors   구심점 섹터 필터(11/23). 빈 배열이면 전부 숨김.
+ * @property {string[]} sectors   구심점 섹터 필터. 빈 배열이면 전부 숨김. (옛 cats 필터는 11/25 제거)
  * @property {number} thr
  * @property {boolean} showNR
  * @property {boolean} showCor
@@ -66,7 +65,6 @@ import { REGIMES } from '../schema/v2.js';
  * @typedef {{type:'select', id:string}
  *   | {type:'deselect'}
  *   | {type:'toggleLevel', level:string}
- *   | {type:'toggleCat', cat:string}
  *   | {type:'toggleSector', sector:string}
  *   | {type:'soloSector', sector:string}
  *   | {type:'setThr', value:number}
@@ -108,13 +106,12 @@ const PREF_KEYS = ['labAll', 'hideOrph', 'autoSpin', 'wobble'];
 
 /**
  * 원본 app.js 기본값과 같은 초기 상태.
- * @param {string[]} categories  데이터에 있는 범주(categoriesPresent 결과)
  * @param {string[]} [sectors]   데이터에 있는 섹터(sectorsPresent 결과). 없으면 전체 섹터.
  * @returns {AppState}
  */
-export function initialState(categories, sectors) {
+export function initialState(sectors) {
   return {
-    filters: { levels: LEVELS.slice(), cats: categories.slice(), sectors: (sectors ?? SECTOR_ORDER).slice(), thr: 0, showNR: true, showCor: false, weak: true },
+    filters: { levels: LEVELS.slice(), sectors: (sectors ?? SECTOR_ORDER).slice(), thr: 0, showNR: true, showCor: false, weak: true },
     view: { selected: null, hop: 1, dir: 'both', tab: 'in', flatAll: false, trace: null, pathTo: null, pathRev: false, pathQuery: '', search: '', sim: SIM_DEFAULT },
     prefs: { labAll: false, hideOrph: true, autoSpin: true, wobble: true },
   };
@@ -122,12 +119,11 @@ export function initialState(categories, sectors) {
 
 /**
  * 앱 첫 화면용 기본 상태: 확실·유력(A, B+) 연결만. 약한 근거(B-)·후보·논쟁은 보기 설정에서 켠다.
- * @param {string[]} categories
  * @param {string[]} [sectors]
  * @returns {AppState}
  */
-export function defaultState(categories, sectors) {
-  const s = initialState(categories, sectors);
+export function defaultState(sectors) {
+  const s = initialState(sectors);
   return { ...s, filters: { ...s.filters, levels: ['A', 'B'], weak: false } };
 }
 
@@ -158,11 +154,6 @@ function reduce(s, a) {
       const on = s.filters.levels.includes(a.level);
       const levels = LEVELS.filter((l) => (l === a.level ? !on : s.filters.levels.includes(l)));
       return { ...s, filters: { ...s.filters, levels } };
-    }
-    case 'toggleCat': {
-      const on = s.filters.cats.includes(a.cat);
-      const cats = on ? s.filters.cats.filter((c) => c !== a.cat) : [...s.filters.cats, a.cat];
-      return { ...s, filters: { ...s.filters, cats } };
     }
     case 'toggleSector': {
       if (!SECTOR_ORDER.includes(a.sector)) return s;
@@ -196,7 +187,7 @@ function reduce(s, a) {
     case 'resetFilters': {
       // 호출자가 initialState(...).filters를 넘긴다. 복사해서 저장한다.
       const f = a.filters;
-      return { ...s, filters: { ...f, levels: f.levels.slice(), cats: f.cats.slice(), sectors: (f.sectors ?? SECTOR_ORDER).slice() } };
+      return { ...s, filters: { ...f, levels: f.levels.slice(), sectors: (f.sectors ?? SECTOR_ORDER).slice() } };
     }
     case 'setHop':
       return a.hop === 1 || a.hop === 2 ? { ...s, view: { ...s.view, hop: a.hop } } : s;
@@ -304,10 +295,6 @@ function restore(initial, key, storage, nodeIds) {
     Array.isArray(f.levels) && f.levels.every((x) => LEVELS.includes(x))
       ? LEVELS.filter((l) => f.levels.includes(l))
       : initial.filters.levels;
-  const cats =
-    Array.isArray(f.cats) && f.cats.every((x) => typeof x === 'string' && CATEGORY_ORDER.includes(x))
-      ? [...new Set(/** @type {string[]} */ (f.cats))]
-      : initial.filters.cats;
   const sectors =
     Array.isArray(f.sectors) && f.sectors.every((x) => typeof x === 'string' && SECTOR_ORDER.includes(x))
       ? SECTOR_ORDER.filter((x) => /** @type {string[]} */ (f.sectors).includes(x))
@@ -325,7 +312,6 @@ function restore(initial, key, storage, nodeIds) {
   return {
     filters: {
       levels,
-      cats,
       sectors,
       thr,
       showNR: bool(f.showNR, initial.filters.showNR),

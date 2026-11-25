@@ -32,7 +32,7 @@ function mk(ids, es, cors = []) {
   return createGraph(/** @type {any} */ ({
     schemaVersion: 2,
     meta: {},
-    nodes: ids.map((id) => ({ id, name: id, cat: 'Other' })),
+    nodes: ids.map((id) => ({ id, name: id })),
     edges: es.map(([src, dst, sign, level, regime], i) => ({ id: `e${i}`, src, dst, sign, level: level ?? 'A', status: 'open', note: '', r: null, rsrc: '', evidence: [], lag: null, regime: regime ?? null })),
     cors,
   }));
@@ -228,7 +228,7 @@ function mkLag(ids, es) {
   return createGraph(/** @type {any} */ ({
     schemaVersion: 2,
     meta: {},
-    nodes: ids.map((id) => ({ id, name: id, cat: 'Other' })),
+    nodes: ids.map((id) => ({ id, name: id })),
     edges: es.map(([src, dst, lag], i) => ({ id: `e${i}`, src, dst, sign: '+', level: 'A', status: 'open', note: '', r: null, rsrc: '', evidence: [], lag, regime: null })),
     cors: [],
   }));

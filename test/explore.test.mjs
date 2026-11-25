@@ -7,6 +7,7 @@ import { createGraph } from '../src/engine/graph.js';
 import { findLoops, polarity } from '../src/engine/cycles.js';
 import { findPaths } from '../src/engine/paths.js';
 import { createStore, initialState } from '../src/store/store.js';
+import { sectorsPresent } from '../src/store/labels.js';
 import { emphasis, visible } from '../src/store/select.js';
 import {
   createExplore,
@@ -22,11 +23,11 @@ import {
 /** @typedef {import('../src/store/store.js').AppState} AppState */
 
 const graph = createGraph(/** @type {any} */ (v1));
-const cats = [...new Set(graph.nodes.map((n) => n.cat))];
+const sectors = sectorsPresent(graph);
 
 /** @param {Partial<AppState['view']>} [view] @returns {AppState} */
 function stateWith(view = {}) {
-  const st = initialState(cats);
+  const st = initialState(sectors);
   return { ...st, view: { ...st.view, ...view } };
 }
 
@@ -196,7 +197,7 @@ test('emphasis: trace 없으면 highlight 결과(edgeIds null), 있으면 trace 
 });
 
 test('store: setTrace·setPathTo는 trace를 채우고 지운다', () => {
-  const st = createStore(initialState(cats), { storage: { getItem: () => null, setItem() {} } });
+  const st = createStore(initialState(sectors), { storage: { getItem: () => null, setItem() {} } });
   st.dispatch({ type: 'select', id: busiestId() });
   st.dispatch({ type: 'setTrace', trace: { kind: 'loop', nodes: ['a'], edges: ['E1'] } });
   assert.equal(st.get().view.trace?.kind, 'loop');

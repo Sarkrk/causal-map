@@ -8,11 +8,11 @@ import { LAGS, REGIMES } from './v2.js';
 
 const TOP_KEYS = ['schemaVersion', 'meta', 'nodes', 'edges', 'cors'];
 const META_REQUIRED = ['version', 'generated', 'nodes', 'edges', 'levels'];
-const CATS = ['Real_Economy', 'Inflation_Labor', 'Policy', 'Financial_Market', 'External_Sector', 'Macro_Korea', 'Macro_Global', 'Industry_AI', 'Industry_Semiconductor', 'Industry_Bio', 'Industry_Defense', 'Labor_Demographics', 'Institutions', 'Environment', 'Fiscal', 'Money_Credit', 'Trade_Global', 'Other'];
 const SIGNS = ['+', '-', '±'];
 const LEVELS = ['A', 'B', 'C', 'D'];
-const NODE_REQUIRED = ['id', 'name', 'cat'];
-const NODE_KEYS = ['id', 'name', 'cat', 'sector', 'layer', 'series', 'desc', 'descSrc', 'aka'];
+// v1 이하 데이터는 cat만 있고 sector가 없다. cat은 선택 키로 허용하되 값은 읽지 않는다(11/25).
+const NODE_REQUIRED = ['id', 'name'];
+const NODE_KEYS = ['id', 'name', 'sector', 'layer', 'series', 'desc', 'descSrc', 'aka', 'cat'];
 const SECTORS = ['macro', 'finance', 'semi', 'bio', 'energy', 'trade', 'policy', 'labor', 'other'];
 const DESC_MAX = 240;
 const DESC_SRC_MAX = 120;
@@ -165,7 +165,7 @@ function checkNodes(nodes, errors) {
     checkRequired(n, NODE_REQUIRED, label, errors);
     if ('id' in n && !nonEmptyStr(n.id)) errors.push(`${label}: id must be a non-empty string`);
     if ('name' in n && !nonEmptyStr(n.name)) errors.push(`${label}: name must be a non-empty string`);
-    if ('cat' in n && !CATS.includes(n.cat)) errors.push(`${label}: cat "${String(n.cat)}" invalid`);
+    if ('cat' in n && n.cat !== null && typeof n.cat !== 'string') errors.push(`${label}: cat must be string or null (legacy, ignored)`);
     if ('sector' in n && n.sector !== null && !SECTORS.includes(n.sector)) errors.push(`${label}: sector "${String(n.sector)}" invalid`);
     if ('layer' in n && n.layer !== null && !Number.isInteger(n.layer)) errors.push(`${label}: layer must be integer or null`);
     if ('series' in n && n.series !== null && typeof n.series !== 'string') errors.push(`${label}: series must be string or null`);
