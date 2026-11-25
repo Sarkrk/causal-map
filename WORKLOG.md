@@ -6,11 +6,21 @@
 
 - 최종 보고서 66건, 논지 문서 26개, 일일 시황 리포트 10/22부터 매일
 
-- 인과 지도: 노드 983 · 인과 1,391(A 122 / B 891 = B+ 189·B- 702 / C 354 / D 24) · 상관 1,472 → [앱 열기](https://sarkrk.github.io/causal-map/)
+- 인과 지도: 노드 757 · 인과 1,293(A 119 / B 828 = B+ 192·B- 636 / C 322 / D 24) · 상관 1,473 → [앱 열기](https://sarkrk.github.io/causal-map/)
 
 - 원칙: 지어내지 않기(못 찾으면 [미확인]), 다른 제공자로 교차확인, 확률엔 기저율 먼저, 통계 검증된 신호만 근거로 사용
 
 ## 날짜별
+
+### 2026-11-25 (Phase 2: 보수적 아카이브 · Backdoor A게이트 · 5D/20D OOS 게이트 · 도구 통합)
+
+- **작업**:
+  1. **보수적 DB 경량화 & KR↔US 정제**: 고립 노드 35개 + 무연결 `econ` 소규모 섬(크기 2~3) 191개 = 총 226노드·98엣지를 `node_archive`/`edge_archive`로 무손실 이관(`983→757노드`, `고립 0`, 연결성분 `138→10`, 최대 성분 비중 `73.3%→95.2%`, `core`/`bridge`/시계열 노드 100% 보존). `인구→POPTHM:ret` 정렬 및 국내 이론 KR↔US 대리 불일치 43건 태깅.
+  2. **정밀 Backdoor 편상관 반박 & `grade()` A승격 차단 게이트**: `causal_confounds.py`에서 매개자·항등 구성요소 과잉통제 제외 및 최조 빈도 정렬·`HYG:inv` 폴백을 구현해 111건을 `evidence(kind='refute')`로 적재(`V17`/`X1399`/`E4`/`U17` 오판 0건). `causalgraph.py grade`의 `R-` 트랙으로 `T2`·`X31`·`X226` 3건을 A→B+ 자동 보류하고, `core+bridge` 31엣지의 `cond`를 정규 `regime`으로 추가 구조화(총 129건).
+  3. **5D/20D 롤링 OOS 워크포워드 & `live` 승격 게이트**: `causal_propagate.py oos-eval` 구현(2012~2026 비중복 OOS, 한·미 `D-1` 정렬, 전기/후기 분할). 6개 `(타깃, 지평)` 조합 전원 OOS BSS 음수(0/6 통과)로 실측되어 `live` 방향 후보 기록 자동 차단(시나리오·요인분해 전용).
+  4. **도구 통합 & 레거시 정리**: `causal_common.py` 공통 모듈 추출, 레거시 HTML 3종 `_archive/causal_legacy_html_20261125/` 이관, `causal_force.py` `r_values.json` 전용 슬림화(`--html` 선택), `_tools/README.md`·`daily-routine.md`·`rules.md` 현행화.
+
+- **검증**: `causal_app.py build` 통과(v3 스키마·참조·`causal_audit.py`·금지 문자열 0건, 버전 `1dfcc96a94`, 678.0KB), 앱 단위 테스트 **282/282 통과**. GitHub Pages 배포 완료.
 
 ### 2026-11-25 (v3 고도화 · P0 패치 · DB 감사 교정)
 
