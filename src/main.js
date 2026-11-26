@@ -14,6 +14,7 @@ import { initPanel } from './ui/panel.js';
 import { initRoute, shareLink } from './ui/route.js';
 import { initDataInfo } from './ui/datainfo.js';
 import { initIndustry } from './ui/industry.js';
+import { initFocus2D, pickInitialNode } from './ui/focus2d.js';
 
 /** @param {string} id */
 function byId(id) {
@@ -49,6 +50,11 @@ async function boot() {
     version: String(data.meta?.version ?? ''),
   });
 
+  // 기본 보기: 2D 포커스 흐름 맵 (상단 3D 버튼으로 언제든 3D 구형 그래프 전환)
+  let is3d = false;
+  const f2dEl = document.getElementById('f2d');
+  const mode3dBtn = document.getElementById('mode3d');
+
   const sheets = initSheets(
     {
       ns: byId('ns'),
@@ -58,9 +64,59 @@ async function boot() {
       fb: byId('fb'),
       zoombox: byId('zoombox'),
     },
-    { onDeselect: () => store.dispatch({ type: 'deselect' }) },
+    {
+      onDeselect: () => {
+        if (is3d) store.dispatch({ type: 'deselect' });
+      },
+      autoOpenOnSelect: () => is3d,
+    },
   );
   store.subscribe(sheets.onStore);
+
+  /** @param {boolean} on3d */
+  function set3DMode(on3d) {
+    is3d = on3d;
+    document.body.classList.toggle('mode-3d', on3d);
+    if (mode3dBtn) {
+      mode3dBtn.textContent = on3d ? '2D' : '3D';
+      mode3dBtn.classList.toggle('on', on3d);
+      mode3dBtn.setAttribute('aria-label', on3d ? '2D 흐름 지도로 돌아가기' : '3D 그래프로 전환');
+    }
+    if (focus2d) focus2d.setActive(!on3d);
+    if (on3d) {
+      byId('toast').classList.remove('on');
+      if (store.get().view.selected) sheets.setSheet(byId('ns'), 'half');
+    } else {
+      sheets.setSheet(byId('ns'), '');
+    }
+  }
+
+  const focus2d = f2dEl
+    ? initFocus2D({
+        root: f2dEl,
+        graph,
+        store,
+        meta: data.meta || {},
+        onSelectNode: (id) => {
+          const node = graph.byId.get(id);
+          if (node) revealNode(graph, store, node);
+          store.dispatch({ type: 'select', id });
+        },
+        onOpenDetail: (tab) => {
+          store.dispatch({ type: 'setTab', tab });
+          sheets.setSheet(byId('ns'), 'open');
+        },
+        onShare: () => {
+          const v = store.get().view;
+          const node = v.selected ? graph.byId.get(v.selected) : undefined;
+          if (node) shareLink(v, node.name, { notify: toast }).catch(() => {});
+        },
+      })
+    : null;
+
+  if (mode3dBtn && f2dEl) {
+    mode3dBtn.addEventListener('click', () => set3DMode(!is3d));
+  }
 
   initFilters({
     graph,
@@ -144,19 +200,22 @@ async function boot() {
   });
 
   byId('nclose').addEventListener('pointerdown', (e) => e.stopPropagation());
-  byId('nclose').addEventListener('click', () => store.dispatch({ type: 'deselect' }));
-
-  // 첫 방문 한 줄 힌트(한 번만). 노드를 열면 사라진다.
-  store.subscribe((_st, _prev, a) => {
-    if (a.type === 'select') byId('toast').classList.remove('on');
+  byId('nclose').addEventListener('click', () => {
+    sheets.setSheet(byId('ns'), '');
+    if (is3d) store.dispatch({ type: 'deselect' });
   });
-  try {
-    if (!localStorage.getItem('cg_hint')) {
-      localStorage.setItem('cg_hint', '1');
-      toast('점을 탭하면 원인과 결과가 보여요', 4000);
+
+  // 초기 진입: 2D 포커스 맵 기본 활성화(딥링크로 노드가 이미 열려 있지 않으면 대표 노드 포커스)
+  if (f2dEl) {
+    if (!store.get().view.selected) {
+      const initId = pickInitialNode(graph);
+      if (initId) store.dispatch({ type: 'select', id: initId });
+    } else if (['sim', 'path', 'loop'].includes(store.get().view.tab)) {
+      sheets.setSheet(byId('ns'), 'open');
     }
-  } catch {
-    /* 저장소 접근 불가면 힌트 생략 */
+    set3DMode(false);
+  } else {
+    document.body.classList.add('mode-3d');
   }
 
   // 노드 시트의 '링크' 버튼. 시트 드래그(pointerdown·capture)와 겹치지 않게 pointerdown을 막는다.

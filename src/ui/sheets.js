@@ -6,7 +6,7 @@
 
 /**
  * @param {{ns: HTMLElement, fs: HTMLElement, nsh: HTMLElement, fsh: HTMLElement, fb: HTMLElement, zoombox: HTMLElement}} els
- * @param {{onDeselect: () => void}} cb  노드 시트를 아래로 내려 닫을 때 선택 해제
+ * @param {{onDeselect: () => void, autoOpenOnSelect?: () => boolean}} cb  노드 시트를 아래로 내려 닫을 때 선택 해제
  * @returns {{setSheet: (el: HTMLElement, st: SheetState) => void, onStore: Listener, fb: HTMLElement}}
  */
 export function initSheets(els, cb) {
@@ -75,8 +75,13 @@ export function initSheets(els, cb) {
     fb,
     /** 선택이 바뀌면 노드 시트를 맞춘다(원본 select()/deselect()의 시트 동작). */
     onStore(_st, _prev, action) {
-      if (action.type === 'select') setSheet(ns, ns.classList.contains('open') ? 'open' : 'half');
-      else if (action.type === 'deselect') setSheet(ns, '');
+      if (action.type === 'select') {
+        if (!cb.autoOpenOnSelect || cb.autoOpenOnSelect()) {
+          setSheet(ns, ns.classList.contains('open') ? 'open' : 'half');
+        }
+      } else if (action.type === 'deselect') {
+        setSheet(ns, '');
+      }
     },
   };
 }

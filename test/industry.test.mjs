@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { normalizeCountry, matchesFilter, rankStageCompanies, FLOW_TOP_N } from '../src/ui/industry.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SRC = join(here, '..', '..', 'research', '_data', 'industry', 'semiconductor.json');
@@ -67,4 +68,30 @@ test('산업지도: 인과 브리지 노드 이름은 문자열 목록', () => {
     for (const n of s.causal_nodes) assert.equal(typeof n, 'string');
   }
   assert.ok(Array.isArray(g.macro_overlay) && g.macro_overlay.length > 0);
+});
+
+test('산업지도 UI 헬퍼: 국가 코드 통일 및 필터·검색 매칭', () => {
+  assert.equal(normalizeCountry('한국'), 'KR');
+  assert.equal(normalizeCountry('KR'), 'KR');
+  assert.equal(normalizeCountry('미국'), 'US');
+  assert.equal(normalizeCountry('대만'), 'TW');
+  const bnSet = new Set(['skhynix', 'asml']);
+  const sk = g.companies.find((c) => c.id === 'skhynix');
+  const nvda = g.companies.find((c) => c.id === 'nvidia');
+  assert.ok(sk && nvda);
+  assert.equal(matchesFilter(sk, 'kr', bnSet, ''), true);
+  assert.equal(matchesFilter(nvda, 'kr', bnSet, ''), false);
+  assert.equal(matchesFilter(sk, 'bottleneck', bnSet, ''), true);
+  assert.equal(matchesFilter(nvda, 'bottleneck', bnSet, ''), false);
+  assert.equal(matchesFilter(sk, 'all', bnSet, 'HBM'), true);
+  assert.equal(matchesFilter(nvda, 'all', bnSet, 'HBM'), false);
+
+  // 대표기업 우선 정렬: 병목·검증·공급사슬 연결도가 높은 기업이 상위 4개 안에 배치된다
+  const equipComps = g.companies.filter((c) => c.stage === 'equip');
+  const fullBn = new Set((g.bottlenecks || []).flatMap((b) => b.companies || []));
+  const ranked = rankStageCompanies(equipComps, g.chains, fullBn);
+  assert.equal(ranked.length, equipComps.length);
+  const topIds = ranked.slice(0, FLOW_TOP_N).map((c) => c.id);
+  assert.ok(topIds.includes('asml'), '장비 대표 상위에 ASML 포함');
+  assert.ok(topIds.includes('hanmi'), '장비 대표 상위에 한미반도체 포함');
 });
