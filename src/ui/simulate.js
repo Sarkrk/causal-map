@@ -30,14 +30,14 @@ export const SCORE_NOTE = '경로 수·근거 등급을 합친 상대 크기, �
 
 /** 경고 종류 → 라벨·색 */
 export const WARN_LABEL = {
-  'loop-R': { text: '강화 루프', color: '#f7768e' },
-  'loop-B': { text: '균형 루프', color: '#7aa2f7' },
-  'edge-flag': { text: '고리 주의', color: '#ff9e64' },
-  confounder: { text: '공통원인 가능', color: '#e0af68' },
-  'correlation-only': { text: '상관만 있음(인과 아님)', color: '#3fb6c9' },
+  'loop-R': { text: '강화 루프', color: '#d93848' },
+  'loop-B': { text: '균형 루프', color: '#2563eb' },
+  'edge-flag': { text: '고리 주의', color: '#c25e00' },
+  confounder: { text: '공통원인 가능', color: '#b45309' },
+  'correlation-only': { text: '상관만 있음(인과 아님)', color: '#0d8a7b' },
 };
 
-const DIR_COLOR = { '+': '#9ece6a', '-': '#f7768e', '±': '#9a9a9a' };
+const DIR_COLOR = { '+': '#0f8a5f', '-': '#d93848', '±': '#6b7684' };
 const DIR_ARROW = { '+': '↑', '-': '↓', '±': '±' };
 
 /** @type {WeakMap<Graph, Map<string, SimResult>>} */
@@ -114,10 +114,10 @@ export function simHtml(r, g, active = null) {
     active.kind === t.kind &&
     active.edges.join('\u0001') === t.edges.join('\u0001') &&
     active.nodes.join('\u0001') === t.nodes.join('\u0001');
-  const onStyle = (/** @type {boolean} */ on) => `cursor:pointer;${on ? 'background:#2e2e2e;border-radius:8px;' : ''}`;
+  const onStyle = (/** @type {boolean} */ on) => `cursor:pointer;${on ? 'background:#ebf3fe;border-radius:8px;padding-left:8px;padding-right:8px;' : ''}`;
   const dirText = r.shockSign === 1 ? '상승(+)' : '하락(−)';
   let h = `<div class="sub" style="margin-top:10px;line-height:1.5">${nm(r.start)} ${dirText} 충격</div>`;
-  if (r.truncated) h += '<p class="sub" style="color:#e0af68">경로가 많아 일부만 계산했습니다.</p>';
+  if (r.truncated) h += '<p class="sub" style="color:#b45309">경로가 많아 일부만 계산했습니다.</p>';
   if (r.impacts.length === 0) return h + '<p class="sub">전파되는 노드가 없습니다(현재 필터·국면 기준).</p>';
 
   h += '<div class="sec" style="margin-top:12px">영향 노드</div>';

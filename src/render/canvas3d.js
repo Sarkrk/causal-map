@@ -328,31 +328,32 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
     );
     return `rgb(${ch[0]},${ch[1]},${ch[2]})`;
   }
-  /** 섹터별 평평한 단색 원 스프라이트(얇은 어두운 테두리)를 한 번만 그려 두고 drawImage로 재사용한다. */
+  /** 섹터별 깔끔한 평면 원 스프라이트(라이트 캔버스용 얇은 흰 테두리)를 한 번만 그려 재사용한다. */
   /** @param {string} sec */
   function sprite(sec) {
     let c = sprites.get(sec);
     if (c) return c;
-    const hex = SECC[/** @type {'other'} */ (sec)] || '#8a8f98';
+    const hex = SECC[/** @type {'other'} */ (sec)] || '#76818e';
     c = document.createElement('canvas');
     c.width = c.height = SP;
     const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
     const m = SP / 2;
     const R = SP * 0.44;
-    g.fillStyle = hex;
-    g.globalAlpha = 0.28;
+    g.fillStyle = '#ffffff';
     g.beginPath();
     g.arc(m, m, R, 0, 6.283);
     g.fill();
-    g.globalAlpha = 1;
-    g.lineWidth = SP * 0.06;
-    g.strokeStyle = hex;
+    g.fillStyle = hex;
+    g.globalAlpha = 0.88;
     g.beginPath();
-    g.arc(m, m, R - g.lineWidth / 2, 0, 6.283);
-    g.stroke();
-    g.beginPath();
-    g.arc(m, m, R * 0.42, 0, 6.283);
+    g.arc(m, m, R * 0.84, 0, 6.283);
     g.fill();
+    g.globalAlpha = 1;
+    g.lineWidth = SP * 0.045;
+    g.strokeStyle = '#ffffff';
+    g.beginPath();
+    g.arc(m, m, R * 0.88, 0, 6.283);
+    g.stroke();
     sprites.set(sec, c);
     return c;
   }
@@ -424,8 +425,8 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
         ctx.setLineDash([]);
         if (l.k === 'c' && on) {
           const u = (performance.now() / 1100 + l.a.ph) % 1;
-          ctx.globalAlpha = 0.95;
-          ctx.fillStyle = '#ffffff';
+          ctx.globalAlpha = 0.9;
+          ctx.fillStyle = '#191f28';
           ctx.beginPath();
           ctx.arc(l.a.sx + (l.b.sx - l.a.sx) * u, l.a.sy + (l.b.sy - l.a.sy) * u, 1.8 * Math.min(1.5, Math.max(0.8, k)), 0, 6.283);
           ctx.fill();
@@ -433,7 +434,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
         if (l.k === 'c' && (on || (!hs && k > 1.2))) arrow(l.a.sx, l.a.sy, l.b.sx, l.b.sy, l.b.rad * l.b.sf * zk * 1.5, col);
       });
 
-    // 섹터 간 상호작용: 보이는 교차 엣지를 허브 사이 굵은 선으로 집계(개별 엣지 위에 그려 눈에 띄게).
+    // 섹터 간 상호작용: 은은한 회색 연결선으로 차분하게 표시
     {
       /** @type {Map<string, number>} */
       const agg = new Map();
@@ -444,43 +445,37 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
       }
       const hp = new Map(hubP.map((h) => [h.k, h]));
       const fsec = st.filters.sectors;
-      const zk = Math.min(1.5, Math.max(0.6, k));
+      const zk = Math.min(1.4, Math.max(0.6, k));
       for (const [key, cnt] of agg) {
         const [ka, kb] = key.split('|');
         const a = hp.get(ka), b = hp.get(kb);
         if (!a || !b) continue;
-        const dim = fsec.includes(ka) && fsec.includes(kb) ? 1 : 0.2;
+        const dim = fsec.includes(ka) && fsec.includes(kb) ? 1 : 0.15;
         const fog = Math.min(a.fog, b.fog);
-        const w = (1.6 + Math.sqrt(cnt) * 1.1) * zk;
-        ctx.strokeStyle = '#c8d6e8';
-        ctx.globalAlpha = Math.min(0.22, 0.06 + cnt * 0.002) * fog * dim;
-        ctx.lineWidth = w * 2.6;
-        ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
-        ctx.globalAlpha = Math.min(0.6, 0.2 + Math.sqrt(cnt) * 0.045) * fog * dim;
+        const w = (1 + Math.sqrt(cnt) * 0.65) * zk;
+        ctx.strokeStyle = '#9aa5b4';
+        ctx.globalAlpha = Math.min(0.26, 0.08 + Math.sqrt(cnt) * 0.025) * fog * dim;
         ctx.lineWidth = w;
         ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
       }
       ctx.globalAlpha = 1;
     }
 
-    // 섹터 허브 본체(깊은 것부터): 은은한 글로우 + 테두리 원. 집계 연결선은 노드 엣지 위에 따로 그린다.
+    // 섹터 허브 본체: 글로우 없이 얇은 원 링만 차분하게 표시
     {
       const fsec = st.filters.sectors;
       hubP.slice().sort((u, v) => v.sz - u.sz).forEach((h) => {
         const on = fsec.includes(h.k);
-        const col = SECC[/** @type {'other'} */ (h.k)] || '#8a9bb0';
+        const col = SECC[/** @type {'other'} */ (h.k)] || '#76818e';
         const rr = Math.max(h.r, 1);
-        ctx.globalAlpha = (on ? 0.4 : 0.1) * h.fog;
-        const gr = ctx.createRadialGradient(h.sx, h.sy, 0, h.sx, h.sy, rr);
-        gr.addColorStop(0, col);
-        gr.addColorStop(1, col + '00');
-        ctx.fillStyle = gr;
+        ctx.globalAlpha = (on ? 0.1 : 0.03) * h.fog;
+        ctx.fillStyle = col;
         ctx.beginPath();
-        ctx.arc(h.sx, h.sy, rr, 0, 6.283);
+        ctx.arc(h.sx, h.sy, Math.max(rr * 0.62, 1), 0, 6.283);
         ctx.fill();
-        ctx.globalAlpha = (on ? 0.85 : 0.2) * h.fog;
+        ctx.globalAlpha = (on ? 0.65 : 0.18) * h.fog;
         ctx.strokeStyle = col;
-        ctx.lineWidth = 1.4;
+        ctx.lineWidth = 1.2;
         ctx.beginPath();
         ctx.arc(h.sx, h.sy, Math.max(rr * 0.62, 1), 0, 6.283);
         ctx.stroke();
@@ -498,59 +493,51 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
         // v3 최신 시장 급변 상태 오버레이(|z| >= 1.5, fresh === true). 정적 이중 링(Idle 0fps 유지).
         if (st.prefs.showState && n.d.state?.fresh && Math.abs(n.d.state.z) >= 1.5 && (!hs || inH)) {
           const z = n.d.state.z;
-          const scol = z > 0 ? '#ff6b6b' : '#4dabf7';
-          ctx.globalAlpha = 0.22 * (hs ? 1 : n.fog);
+          const scol = z > 0 ? '#d93848' : '#2563eb';
+          ctx.globalAlpha = 0.18 * (hs ? 1 : n.fog);
           ctx.strokeStyle = scol;
-          ctx.lineWidth = Math.min(4.5, Math.abs(z) * 1.1) + 2;
+          ctx.lineWidth = Math.min(4, Math.abs(z) * 1.0) + 1.5;
           ctx.beginPath();
-          ctx.arc(n.sx, n.sy, r + 4.5, 0, 6.283);
+          ctx.arc(n.sx, n.sy, r + 4, 0, 6.283);
           ctx.stroke();
-          ctx.globalAlpha = 0.85 * (hs ? 1 : n.fog);
-          ctx.lineWidth = Math.min(2.6, Math.max(1.2, Math.abs(z) * 0.65));
+          ctx.globalAlpha = 0.82 * (hs ? 1 : n.fog);
+          ctx.lineWidth = Math.min(2.2, Math.max(1.2, Math.abs(z) * 0.6));
           ctx.beginPath();
-          ctx.arc(n.sx, n.sy, r + 4.5, 0, 6.283);
+          ctx.arc(n.sx, n.sy, r + 4, 0, 6.283);
           ctx.stroke();
         }
         if (hs && inH) {
-          ctx.globalAlpha = n.d.id === sel ? 0.5 : 0.3;
+          ctx.globalAlpha = n.d.id === sel ? 0.5 : 0.28;
           ctx.strokeStyle = ncol(n);
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.arc(n.sx, n.sy, r + 3.5, 0, 6.283);
+          ctx.arc(n.sx, n.sy, r + 3, 0, 6.283);
           ctx.stroke();
         }
-        if (!hs && r > 7) {
-          ctx.globalAlpha = 0.1 * n.fog;
-          ctx.fillStyle = ncol(n);
-          ctx.beginPath();
-          ctx.arc(n.sx, n.sy, r * 1.55, 0, 6.283);
-          ctx.fill();
-        }
-        ctx.globalAlpha = hs ? (inH ? 1 : 0.06) : n.fog;
+        ctx.globalAlpha = hs ? (inH ? 1 : 0.12) : n.fog;
         const rr = hs && !inH ? r * 0.7 : r;
         if (rr < 2.6) {
-          // 아주 작을 땐 스프라이트 대신 단색 점(번짐 방지)
           ctx.fillStyle = ncol(n);
           ctx.beginPath();
-          ctx.arc(n.sx, n.sy, Math.max(rr, 1.1), 0, 6.283);
+          ctx.arc(n.sx, n.sy, Math.max(rr, 1.2), 0, 6.283);
           ctx.fill();
         } else {
-          const d = rr / 0.44; // 스프라이트의 본체 반지름이 44%
+          const d = rr / 0.44;
           ctx.drawImage(sprite(n.d.sector || 'other'), n.sx - d / 2, n.sy - d / 2, d, d);
         }
         if (n.d.id === sel) {
           ctx.globalAlpha = 1;
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1.6;
+          ctx.strokeStyle = '#191f28';
+          ctx.lineWidth = 1.8;
           ctx.beginPath();
           ctx.arc(n.sx, n.sy, r + 4, 0, 6.283);
           ctx.stroke();
-          ctx.strokeStyle = '#e6e8ec';
-          ctx.lineWidth = 1.2;
-          ctx.setLineDash([6, 5]);
-          ctx.lineDashOffset = -performance.now() / 55;
+          ctx.strokeStyle = '#6b7684';
+          ctx.lineWidth = 1.1;
+          ctx.setLineDash([5, 4]);
+          ctx.lineDashOffset = -performance.now() / 60;
           ctx.beginPath();
-          ctx.arc(n.sx, n.sy, r + 9, 0, 6.283);
+          ctx.arc(n.sx, n.sy, r + 8.5, 0, 6.283);
           ctx.stroke();
           ctx.setLineDash([]);
           ctx.lineDashOffset = 0;
@@ -559,7 +546,7 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
         const la = labAll ? 1 : hs ? (inH ? 1 : 0) : Math.max(0, Math.min(1, (k * n.sf * (0.55 + n.deg / 22) - 0.55) / 0.35));
         if (la > 0.02) lab.push([n, n.sx, n.sy + r + 12, la * (hs ? 1 : 0.8 + 0.2 * n.fog)]);
       });
-    ctx.font = '500 11px ui-monospace,Menlo,Consolas,"Noto Sans KR",monospace';
+    ctx.font = '500 11px -apple-system,"Pretendard","Noto Sans KR",sans-serif';
     ctx.textAlign = 'center';
     lab.sort((u, v) => Number(v[0].d.id === sel) - Number(u[0].d.id === sel) || ((u[0].sz - v[0].sz) * 0.02 + (v[0].deg - u[0].deg)));
     /** @type {number[][]} */
@@ -570,15 +557,15 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
       if (n.d.id !== sel && box.some((o) => bb[0] < o[2] && bb[2] > o[0] && bb[1] < o[3] && bb[3] > o[1])) return;
       box.push(bb);
       ctx.globalAlpha = a;
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = 'rgba(10,11,13,.92)';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(244,245,247,.94)';
       ctx.lineJoin = 'round';
       ctx.strokeText(n.d.name, x, y);
-      ctx.fillStyle = n.d.id === sel ? '#ffffff' : '#cfd2d6';
+      ctx.fillStyle = n.d.id === sel ? '#191f28' : '#333d4b';
       ctx.fillText(n.d.name, x, y);
     });
-    // 허브 라벨: 섹터 이름 + 소속 노드 수. 가까운 것 우선, 겹치면 뒤 것은 생략.
-    ctx.font = '700 12px ui-monospace,Menlo,Consolas,"Noto Sans KR",monospace';
+    // 허브 라벨: 섹터 이름 + 소속 노드 수.
+    ctx.font = '700 11.5px -apple-system,"Pretendard","Noto Sans KR",sans-serif';
     hubP.slice().sort((u, v) => u.sz - v.sz).forEach((h) => {
       const on = st.filters.sectors.includes(h.k);
       const txt = `${SN[/** @type {'other'} */ (h.k)] || h.k} ${sectorCount[h.k] || 0}`;
@@ -587,32 +574,18 @@ export function createCanvas3D(cv, graph, store, opts = {}) {
       const bb = [h.sx - w, y - 13, h.sx + w, y + 3];
       if (box.some((o) => bb[0] < o[2] && bb[2] > o[0] && bb[1] < o[3] && bb[3] > o[1])) return;
       box.push(bb);
-      ctx.globalAlpha = (on ? 0.95 : 0.3) * h.fog;
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(10,11,13,.92)';
+      ctx.globalAlpha = (on ? 0.92 : 0.25) * h.fog;
+      ctx.lineWidth = 3.2;
+      ctx.strokeStyle = 'rgba(244,245,247,.95)';
       ctx.lineJoin = 'round';
       ctx.strokeText(txt, h.sx, y);
-      ctx.fillStyle = SECC[/** @type {'other'} */ (h.k)] || '#cfd2d6';
+      ctx.fillStyle = SECC[/** @type {'other'} */ (h.k)] || '#4e5968';
       ctx.fillText(txt, h.sx, y);
     });
     ctx.globalAlpha = 1;
     {
-      const cx = W / 2 + cam.px;
-      const cy = H / 2 + cam.py;
-      ctx.strokeStyle = 'rgba(255,255,255,.4)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(cx, cy, 9, 0, 6.283);
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        ctx.moveTo(cx + dx * 5, cy + dy * 5);
-        ctx.lineTo(cx + dx * 15, cy + dy * 15);
-      }
-      ctx.stroke();
       const ro = typeof document !== 'undefined' ? document.getElementById('ro') : null;
-      if (ro) {
-        const deg = (v) => ((Math.round(v * 57.2958) % 360) + 360) % 360;
-        ro.textContent = `YAW ${String(deg(cam.yaw)).padStart(3, '0')}°\nPIT ${Math.round(cam.pitch * 57.2958)}°\nZOOM ×${cam.k.toFixed(2)}`;
-      }
+      if (ro) ro.textContent = '';
     }
   }
 

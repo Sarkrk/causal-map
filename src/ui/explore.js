@@ -23,13 +23,13 @@ export const SUGGEST_MAX = 8;
 
 /** 극성 → 배지 문구·색 */
 const POLARITY = {
-  R: { text: 'R 강화', color: '#f7768e' },
-  B: { text: 'B 균형', color: '#7aa2f7' },
-  '?': { text: '? 조건부', color: '#9a9a9a' },
+  R: { text: 'R 강화', color: '#d93848' },
+  B: { text: 'B 균형', color: '#2563eb' },
+  '?': { text: '? 조건부', color: '#6b7684' },
 };
 
 /** 부호 → 배지 색 */
-const SIGN_COLOR = { '+': '#9ece6a', '-': '#f7768e', '±': '#9a9a9a' };
+const SIGN_COLOR = { '+': '#0f8a5f', '-': '#d93848', '±': '#6b7684' };
 
 /**
  * 엔진 함수를 주입할 수 있는 탐색기. 같은 (graph, filters, sel, maxLen) 키는 엔진을 한 번만 부른다.
@@ -198,7 +198,7 @@ function chainHtml(g, edges) {
  * @param {string} inner
  */
 function itemBox(on, attrs, inner) {
-  const style = `cursor:pointer;${on ? 'background:#2e2e2e;border-radius:8px;' : ''}`;
+  const style = `cursor:pointer;${on ? 'background:#ebf3fe;border-radius:8px;padding-left:8px;padding-right:8px;' : ''}`;
   return `<div class="it${on ? ' on' : ''}" data-act="trace" ${attrs} style="${style}">${inner}</div>`;
 }
 
@@ -260,7 +260,7 @@ export function pathBoxHtml(g, st) {
   const sel = st.view.selected ?? '';
   return (
     `<div id="pbox" data-sel="${esc(sel)}">` +
-    `<input id="pq" type="search" placeholder="도착 노드 검색" autocomplete="off" value="${esc(st.view.pathQuery)}" style="width:100%;height:44px;border-radius:20px;border:1px solid var(--line);background:#2e2e2e;color:var(--tx);padding:0 14px;font-size:16px;outline:none">` +
+    `<input id="pq" type="search" placeholder="도착 노드 검색" autocomplete="off" value="${esc(st.view.pathQuery)}" style="width:100%;height:42px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--tx);padding:0 12px;font-size:15px;outline:none">` +
     `<div id="psug" class="row" style="margin-top:6px">${suggestHtml(g, st.view.pathQuery, sel || null)}</div>` +
     `<div data-part="plist">${pathListHtml(g, st)}</div>` +
     `</div>`

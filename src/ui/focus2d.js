@@ -159,7 +159,7 @@ export function initFocus2D(opts) {
       `<div class="f2-ectop">` +
       `<span class="f2-sgn ${signCls}" title="인과 방향">${esc(signTxt)}</span>` +
       `<b class="f2-ename">${esc(other.name)}</b>` +
-      `<span class="f2-elv" style="background:${GC[e.level]}29;color:${e.level === 'C' ? '#b8c0ce' : lvCol}">${esc(lvText)}</span>` +
+      `<span class="f2-elv" style="background:${GC[e.level]}18;color:${e.level === 'C' ? '#4e5968' : lvCol}">${esc(lvText)}</span>` +
       `</div>` +
       `<div class="f2-ecmeta">` +
       `<span class="f2-esec">${esc(SN[/** @type {'other'} */ (other.sector || 'other')] || '기타')}</span>` +

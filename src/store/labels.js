@@ -1,8 +1,8 @@
 // @ts-check
 // 화면 표시 상수. 구심점 섹터(11/23)만 쓴다. 옛 '범주(cat)' 색·이름은 11/25 제거됐다.
 
-/** 등급 → 색 (원본 GC). */
-export const GC = { A: '#ff3d6e', B: '#3d9bff', C: '#5f7a94', D: '#93a8bd' };
+/** 등급 → 색 (라이트 테마 고대비·저채도). */
+export const GC = { A: '#d93848', B: '#2b6cb0', C: '#6b7684', D: '#8b95a1' };
 
 /** 섹터(구심점) → 한글 이름. 11/23 사용자 지시: 섹터별 구심점 구조. 키 순서가 배치 순서. */
 export const SN = {
@@ -17,17 +17,17 @@ export const SN = {
   other: '이론·기타',
 };
 
-/** 섹터 → 색(허브·노드 클러스터 색). */
+/** 섹터 → 색(절제된 핀테크·에디토리얼 톤, 작은 색 점·배지용). */
 export const SECC = {
-  macro: '#ffc247',
-  finance: '#4da3ff',
-  semi: '#c77dff',
-  bio: '#69db7c',
-  energy: '#35e0a1',
-  trade: '#5b7cff',
-  policy: '#a6b8cc',
-  labor: '#ff8a4d',
-  other: '#8a9bb0',
+  macro: '#b7791f',
+  finance: '#2563eb',
+  semi: '#6d4aff',
+  bio: '#168a53',
+  energy: '#0d8a7b',
+  trade: '#3b5bdb',
+  policy: '#5a6778',
+  labor: '#c95b2b',
+  other: '#76818e',
 };
 
 /** @type {string[]} 섹터 키 전체 순서 */
@@ -62,9 +62,9 @@ export const TIER_TEXT = /** @type {Record<string, string>} */ ({
 
 /** 티어 → 배지 색. */
 export const TIER_COLOR = /** @type {Record<string, string>} */ ({
-  core: '#ff6b6b',
-  bridge: '#4da3ff',
-  econ: '#8a9bb0',
+  core: '#d93848',
+  bridge: '#2563eb',
+  econ: '#6b7684',
 });
 
 /** 엣지 구조 경고 플래그 → 배지 문구. */

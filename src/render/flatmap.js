@@ -156,7 +156,7 @@ export function flatHtml(graph, state, nid) {
   }
   /** @param {[number, number, string, string, string]} b */
   const badgeSvg = ([x, y, col, sg, cls]) =>
-    `<g${cls ? ` class="${cls}"` : ''}><circle cx="${x}" cy="${y}" r="7.5" fill="#262626" stroke="${col}" stroke-width="1.2"/><text x="${x}" y="${y + 3.6}" font-size="11" fill="${col}" text-anchor="middle" font-weight="700">${esc(sg)}</text></g>`;
+    `<g${cls ? ` class="${cls}"` : ''}><circle cx="${x}" cy="${y}" r="7.5" fill="#ffffff" stroke="${col}" stroke-width="1.3"/><text x="${x}" y="${y + 3.6}" font-size="11" fill="${col}" text-anchor="middle" font-weight="700">${esc(sg)}</text></g>`;
   badge.forEach((b) => (sv += badgeSvg(b)));
   const bdg = badge.splice(0);
   cols.forEach((c, i) =>
@@ -164,15 +164,16 @@ export function flatHtml(graph, state, nid) {
       const [X, Y] = /** @type {number[]} */ (pos[i].get(x.id));
       const me = x.id === nid;
       const ls = wrap(x.name, hop === 1 && bw > 100 ? Math.floor(bw / 12) : 7);
-      const col = SECC[/** @type {'other'} */ (x.sector || 'other')] || '#8a9bb0';
+      const col = SECC[/** @type {'other'} */ (x.sector || 'other')] || '#6b7684';
       const attr = me ? '' : ` data-act="go" data-id="${esc(x.id)}"`;
       const ncls = trCls(trNodes.has(x.id));
       sv +=
-        `<g class="bx${ncls ? ' ' + ncls : ''}"${attr}><rect x="${X}" y="${Y}" width="${bw}" height="${bh}" rx="8" fill="${me ? col : col + '2e'}" stroke="${col}" stroke-width="${me ? 0 : 1.2}"/>` +
+        `<g class="bx${ncls ? ' ' + ncls : ''}"${attr}><rect x="${X}" y="${Y}" width="${bw}" height="${bh}" rx="6" fill="${me ? '#191f28' : '#ffffff'}" stroke="${me ? '#191f28' : '#d1d6db'}" stroke-width="${me ? 1.5 : 1}"/>` +
+        `<circle cx="${X + 8}" cy="${Y + 8}" r="2.6" fill="${col}"/>` +
         ls
           .map(
             (t, k) =>
-              `<text x="${X + bw / 2}" y="${Y + bh / 2 + (ls.length === 1 ? 4 : k === 0 ? -2 : 10)}" font-size="${me ? 12 : 11}" font-weight="${me ? 700 : 400}" fill="${me ? '#111' : '#e6e6e6'}" text-anchor="middle">${esc(t)}</text>`,
+              `<text x="${X + bw / 2}" y="${Y + bh / 2 + (ls.length === 1 ? 4 : k === 0 ? -2 : 10)}" font-size="${me ? 12 : 11}" font-weight="${me ? 700 : 500}" fill="${me ? '#ffffff' : '#191f28'}" text-anchor="middle">${esc(t)}</text>`,
           )
           .join('') +
         `</g>`;

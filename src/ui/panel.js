@@ -92,10 +92,10 @@ export function initPanel(o) {
     }
     const flagHtml =
       Array.isArray(l.flags) && l.flags.length
-        ? `<div class="meta" style="color:#e0af68">${l.flags.map((fl) => `⚠ ${esc(FLAG_TEXT[fl] ?? fl)}`).join(' · ')}</div>`
+        ? `<div class="meta" style="color:#b45309">${l.flags.map((fl) => `⚠ ${esc(FLAG_TEXT[fl] ?? fl)}`).join(' · ')}</div>`
         : '';
     return (
-      `<div class="it"><div class="r1"><span class="g" style="background:${GC[l.level]}33;color:${l.level === 'C' ? '#bbb' : levelColor(l.level, l.sub)}">${esc(levelText(l.level, l.sub))}</span>` +
+      `<div class="it"><div class="r1"><span class="g" style="background:${GC[l.level]}1a;color:${l.level === 'C' ? '#4e5968' : levelColor(l.level, l.sub)}">${esc(levelText(l.level, l.sub))}</span>` +
       `<span class="sg">${esc(SIGN_LABEL[l.sign] ?? l.sign)}</span><span class="nm">${dir} ${esc(other.name)}</span>` +
       `<a class="go" data-act="go" data-id="${esc(other.id)}" role="button">이동 ›</a></div>` +
       (metaParts.length ? `<div class="meta">${esc(metaParts.join(' · '))}</div>` : '') +
@@ -120,7 +120,7 @@ export function initPanel(o) {
   const cri = (l, selId) => {
     const o2 = nodeOf(l.src === selId ? l.dst : l.src);
     return (
-      `<div class="it"><div class="r1"><span class="g" style="background:#3fb6c933;color:#3fb6c9">상관</span>` +
+      `<div class="it"><div class="r1"><span class="g" style="background:#0d8a7b18;color:#0d8a7b">상관</span>` +
       `<span class="nm">${esc(o2.name)}</span><a class="go" data-act="go" data-id="${esc(o2.id)}" role="button">이동 ›</a></div>` +
       `<div class="meta">강도 ${+Math.abs(l.r).toFixed(2)}</div></div>`
     );
@@ -148,7 +148,7 @@ export function initPanel(o) {
     let stateHtml = '';
     if (n.state) {
       const z = n.state.z;
-      const col = !n.state.fresh ? '#8c8e94' : z >= 1.5 ? '#ff6b6b' : z <= -1.5 ? '#4dabf7' : '#cfd2d6';
+      const col = !n.state.fresh ? '#8b95a1' : z >= 1.5 ? '#d93848' : z <= -1.5 ? '#2563eb' : '#4e5968';
       const winText = n.state.win === '21D' ? '21거래일' : n.state.win === '1Q' ? '1분기' : '1개월';
       const zStr = `${z >= 0 ? '+' : ''}${z.toFixed(2)}`;
       const chgPart = n.state.chg ? ` ${n.state.chg}` : '';

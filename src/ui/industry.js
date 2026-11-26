@@ -27,20 +27,40 @@ export function normalizeCountry(raw) {
   return COUNTRY_CODE[raw] || raw || '';
 }
 
+/** 단계별 절제된 라이트 팔레트 매핑(원본 데이터의 형광색을 차분한 핀테크 톤으로 치환) */
+const STAGE_TONE = /** @type {Record<string,string>} */ ({
+  design: '#6d4aff',
+  mat: '#b7791f',
+  part: '#c95b2b',
+  equip: '#d9483b',
+  fab: '#2563eb',
+  memory: '#1d4ed8',
+  package: '#0d8a7b',
+  fabless: '#7c3aed',
+  system: '#b45309',
+  cloud: '#3b5bdb',
+  aisw: '#be185d',
+});
+
+/** @param {Stage|undefined} s */
+function stageTone(s) {
+  return (s && (STAGE_TONE[s.id] || s.color)) || '#6b7684';
+}
+
 /** 가로 전체 맵용 4개 대분류 배너 (9열 균형 배치) */
 const MAP_PHASES = [
-  { id: 'p1', label: 'PHASE 1 · 소부장', sub: '원재료 · 핵심 부품 · 장비', colStart: 1, span: 3, color: '#ffa94d' },
-  { id: 'p2', label: 'PHASE 2 · 제조 · 후공정', sub: '파운드리 · 메모리 · 패키징 · 설계IP', colStart: 4, span: 2, color: '#4da3ff' },
-  { id: 'p3', label: 'PHASE 3 · 칩 · 시스템', sub: '칩 설계사(팹리스) · 서버·기기', colStart: 6, span: 2, color: '#e056fd' },
-  { id: 'p4', label: 'PHASE 4 · 인프라 · AI 서비스', sub: '클라우드 · 데이터센터 · B2C AI', colStart: 8, span: 2, color: '#ff6b9d' },
+  { id: 'p1', label: 'PHASE 1 · 소부장', sub: '원재료 · 핵심 부품 · 장비', colStart: 1, span: 3, color: '#b45309' },
+  { id: 'p2', label: 'PHASE 2 · 제조 · 후공정', sub: '파운드리 · 메모리 · 패키징 · 설계IP', colStart: 4, span: 2, color: '#2563eb' },
+  { id: 'p3', label: 'PHASE 3 · 칩 · 시스템', sub: '칩 설계사(팹리스) · 서버·기기', colStart: 6, span: 2, color: '#6d4aff' },
+  { id: 'p4', label: 'PHASE 4 · 인프라 · AI 서비스', sub: '클라우드 · 데이터센터 · B2C AI', colStart: 8, span: 2, color: '#be185d' },
 ];
 
 /** 세로 파이프라인용 4개 대분류(단계 순서 1→11 기준) */
 const FLOW_PHASES = [
-  { label: 'PHASE 1 · 설계 · 소부장', sub: '설계 도구와 원재료·부품·장비', color: '#ffa94d', stages: ['design', 'mat', 'part', 'equip'] },
-  { label: 'PHASE 2 · 제조 · 후공정', sub: '웨이퍼 생산·HBM·패키징', color: '#4da3ff', stages: ['fab', 'memory', 'package'] },
-  { label: 'PHASE 3 · 칩 · 시스템', sub: '완성 칩과 AI 서버 조립', color: '#e056fd', stages: ['fabless', 'system'] },
-  { label: 'PHASE 4 · 인프라 · AI 서비스', sub: '데이터센터와 B2C AI 수요', color: '#ff6b9d', stages: ['cloud', 'aisw'] },
+  { label: 'PHASE 1 · 설계 · 소부장', sub: '설계 도구와 원재료·부품·장비', color: '#b45309', stages: ['design', 'mat', 'part', 'equip'] },
+  { label: 'PHASE 2 · 제조 · 후공정', sub: '웨이퍼 생산·HBM·패키징', color: '#2563eb', stages: ['fab', 'memory', 'package'] },
+  { label: 'PHASE 3 · 칩 · 시스템', sub: '완성 칩과 AI 서버 조립', color: '#6d4aff', stages: ['fabless', 'system'] },
+  { label: 'PHASE 4 · 인프라 · AI 서비스', sub: '데이터센터와 B2C AI 수요', color: '#be185d', stages: ['cloud', 'aisw'] },
 ];
 
 /** 가로 맵 열(1..9) 구성 */
@@ -280,7 +300,7 @@ export function initIndustry(opts) {
         item.type = 'button';
         item.className = 'ind-sug-item';
         const cc = normalizeCountry(c.country);
-        item.innerHTML = `<i class="ind-sug-dot" style="background:${st ? st.color : '#8a9bb0'}"></i><b>${c.kr}</b><span class="ind-sug-meta">${cc}${c.ticker ? ' · ' + c.ticker : ''} · ${st ? st.name : ''}</span>`;
+        item.innerHTML = `<i class="ind-sug-dot" style="background:${stageTone(st)}"></i><b>${c.kr}</b><span class="ind-sug-meta">${cc}${c.ticker ? ' · ' + c.ticker : ''} · ${st ? st.name : ''}</span>`;
         item.addEventListener('click', (e) => {
           e.stopPropagation();
           searchSug.hidden = true;
@@ -383,7 +403,7 @@ export function initIndustry(opts) {
       const chip = document.createElement('button');
       chip.className = 'ind-stagechip';
       chip.dataset.stage = s.id;
-      chip.style.setProperty('--sc', s.color);
+      chip.style.setProperty('--sc', stageTone(s));
       chip.innerHTML = `<i class="ind-scdot"></i><b>${s.order}. ${s.name}</b>`;
       chip.addEventListener('click', () => {
         setActiveStageChip(s.id);
@@ -452,7 +472,7 @@ export function initIndustry(opts) {
         const col = document.createElement('section');
         col.className = 'ind-col' + (WIDE_STAGES.has(s.id) ? ' wide' : '');
         col.dataset.stage = s.id;
-        col.style.setProperty('--sc', s.color);
+        col.style.setProperty('--sc', stageTone(s));
         cols.set(s.id, col);
 
         const comps = g.companies.filter((c) => c.stage === s.id);
@@ -538,9 +558,9 @@ export function initIndustry(opts) {
     legendEl.id = 'indlegend';
     legendEl.hidden = true;
     legendEl.innerHTML =
-      '<span><i style="background:#2dd4bf"></i>상류 공급받음</span>' +
-      '<span><i style="background:#fbbf24"></i>하류 납품함</span>' +
-      '<span><i style="background:#a78bfa"></i>양방향</span>';
+      '<span><i style="background:#0d9488"></i>상류 공급받음</span>' +
+      '<span><i style="background:#d97706"></i>하류 납품함</span>' +
+      '<span><i style="background:#4f46e5"></i>양방향</span>';
     view.appendChild(legendEl);
 
     // 확대·축소 버튼 (가로 맵 전용)
@@ -682,7 +702,7 @@ export function initIndustry(opts) {
         const sec = document.createElement('section');
         sec.className = 'ind-fsec';
         sec.dataset.stage = s.id;
-        sec.style.setProperty('--sc', s.color);
+        sec.style.setProperty('--sc', stageTone(s));
 
         const hd = document.createElement('button');
         hd.className = 'ind-fhd';
@@ -740,7 +760,7 @@ export function initIndustry(opts) {
         } else if (s.flow_label && (idx < phStages.length - 1 || ph.stages[ph.stages.length - 1] === s.id)) {
           const arrow = document.createElement('div');
           arrow.className = 'ind-fconn';
-          arrow.style.setProperty('--sc', s.color);
+          arrow.style.setProperty('--sc', stageTone(s));
           arrow.innerHTML = `<i class="ind-fline"></i><span>↓ ${s.flow_label}</span>`;
           cont.appendChild(arrow);
         }
@@ -818,7 +838,7 @@ export function initIndustry(opts) {
     panel.innerHTML = '';
     const hd = document.createElement('div');
     hd.className = 'indp-hd';
-    hd.style.setProperty('--sc', '#fbbf24');
+    hd.style.setProperty('--sc', '#d97706');
     hd.innerHTML = `<div><h2>⚠ ${b.title}</h2><div class="indp-sub">반도체 밸류체인 핵심 병목 · 관련 기업 ${set.size}곳</div></div>`;
     const close = document.createElement('button');
     close.className = 'chip';
@@ -1142,7 +1162,7 @@ export function initIndustry(opts) {
     panel.innerHTML = '';
     const hd = document.createElement('div');
     hd.className = 'indp-hd';
-    hd.style.setProperty('--sc', st ? st.color : '#8a9bb0');
+    hd.style.setProperty('--sc', stageTone(st));
     const cc = normalizeCountry(c.country);
     hd.innerHTML =
       `<div><h2>${c.kr}${c.name !== c.kr ? ` <small>${c.name}</small>` : ''}</h2>` +
@@ -1297,7 +1317,7 @@ export function initIndustry(opts) {
     panel.innerHTML = '';
     const hd = document.createElement('div');
     hd.className = 'indp-hd';
-    hd.style.setProperty('--sc', s.color);
+    hd.style.setProperty('--sc', stageTone(s));
     hd.innerHTML = `<div><h2>${s.order}. ${s.name}</h2><div class="indp-sub">${s.short}</div></div>`;
     const close = document.createElement('button');
     close.className = 'chip';
@@ -1361,7 +1381,7 @@ export function initIndustry(opts) {
     const stColor = (/** @type {string} */ cid) => {
       const c = data.companies.find((x) => x.id === cid);
       const st = c && data.stages.find((x) => x.id === c.stage);
-      return (st && st.color) || '#c8d6e8';
+      return stageTone(st);
     };
 
     const stageBoxes = new Map();
@@ -1426,7 +1446,7 @@ export function initIndustry(opts) {
           const ly = lane.y;
           const r = 12;
           const d = `M${x1},${y1} L${x1},${ly + r} Q${x1},${ly} ${x1 - r},${ly} L${x2 + r},${ly} Q${x2},${ly} ${x2},${ly + r} L${x2},${y2}`;
-          addStagePath(d, st.color, true);
+          addStagePath(d, stageTone(st), true);
           if (!sel && activeBnIdx === null) {
             const mx = (x1 + x2) / 2;
             const gLbl = document.createElementNS(NS, 'g');
@@ -1436,15 +1456,15 @@ export function initIndustry(opts) {
             rect.setAttribute('y', String(ly - 11));
             rect.setAttribute('width', '124');
             rect.setAttribute('height', '20');
-            rect.setAttribute('rx', '10');
-            rect.setAttribute('fill', '#14151c');
-            rect.setAttribute('stroke', st.color);
+            rect.setAttribute('rx', '6');
+            rect.setAttribute('fill', '#ffffff');
+            rect.setAttribute('stroke', '#d1d6db');
             rect.setAttribute('stroke-width', '1');
             const txt = document.createElementNS(NS, 'text');
             txt.setAttribute('x', String(mx));
             txt.setAttribute('y', String(ly + 3));
             txt.setAttribute('text-anchor', 'middle');
-            txt.setAttribute('fill', st.color);
+            txt.setAttribute('fill', stageTone(st));
             txt.setAttribute('font-size', '10.5');
             txt.setAttribute('font-weight', '700');
             txt.textContent = 'AI 수요 선순환 ↺';
@@ -1454,13 +1474,14 @@ export function initIndustry(opts) {
           continue;
         }
 
+        const flowStroke = '#94a3b8';
         if (colB === colA + 1) {
           const x1 = A.r + 2;
           const y1 = A.cy;
           const x2 = B.l - 4;
           const y2 = B.cy;
           const mx = (x1 + x2) / 2;
-          addStagePath(`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`, st.color, false);
+          addStagePath(`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`, flowStroke, false);
         } else if (key === 'mat>memory' && lane && gutterCol4Left) {
           const x1 = A.cx + lane.offSrc;
           const y1 = A.t - 2;
@@ -1470,7 +1491,7 @@ export function initIndustry(opts) {
           const y2 = B.cy;
           const r = 10;
           const d = `M${x1},${y1} L${x1},${ly + r} Q${x1},${ly} ${x1 + r},${ly} L${gx - r},${ly} Q${gx},${ly} ${gx},${ly + r} L${gx},${y2 - r} Q${gx},${y2} ${gx + r},${y2} L${x2},${y2}`;
-          addStagePath(d, st.color, false);
+          addStagePath(d, flowStroke, false);
         } else if (lane) {
           const x1 = A.cx + lane.offSrc;
           const y1 = A.t - 2;
@@ -1479,7 +1500,7 @@ export function initIndustry(opts) {
           const ly = lane.y;
           const r = 10;
           const d = `M${x1},${y1} L${x1},${ly + r} Q${x1},${ly} ${x1 + r},${ly} L${x2 - r},${ly} Q${x2},${ly} ${x2},${ly + r} L${x2},${y2}`;
-          addStagePath(d, st.color, false);
+          addStagePath(d, flowStroke, false);
         }
       }
     }
@@ -1543,16 +1564,16 @@ export function initIndustry(opts) {
       const c1x = fwd ? x1 + dx : x1 - dx;
       const c2x = fwd ? x2 - dx : x2 + dx;
 
-      const col = active ? (isBidi ? '#a78bfa' : down ? '#fbbf24' : '#2dd4bf') : stColor(ch.from);
+      const col = active ? (isBidi ? '#4f46e5' : down ? '#d97706' : '#0d9488') : stColor(ch.from);
 
       if (active) {
         const halo = document.createElementNS(NS, 'path');
         halo.setAttribute('class', 'ind-line');
         halo.setAttribute('d', `M${x1},${y1} C${c1x},${y1} ${c2x},${y2} ${x2},${y2}`);
         halo.setAttribute('fill', 'none');
-        halo.setAttribute('stroke', '#0a0b0d');
-        halo.setAttribute('stroke-width', '5.5');
-        halo.setAttribute('opacity', '0.78');
+        halo.setAttribute('stroke', '#f4f5f7');
+        halo.setAttribute('stroke-width', '5');
+        halo.setAttribute('opacity', '0.9');
         targetSvg.appendChild(halo);
       }
 
@@ -1562,8 +1583,8 @@ export function initIndustry(opts) {
       p.setAttribute('fill', 'none');
       p.setAttribute('stroke', col);
       p.setAttribute('stroke-linecap', 'round');
-      p.setAttribute('stroke-width', active ? '2.6' : '1.6');
-      p.setAttribute('opacity', active ? '0.95' : '0.38');
+      p.setAttribute('stroke-width', active ? '2.4' : '1.4');
+      p.setAttribute('opacity', active ? '0.95' : '0.35');
       p.setAttribute('marker-end', markerRef);
       targetSvg.appendChild(p);
 
@@ -1580,8 +1601,8 @@ export function initIndustry(opts) {
         rect.setAttribute('y', String(my - 10));
         rect.setAttribute('width', String(pw));
         rect.setAttribute('height', '20');
-        rect.setAttribute('rx', '10');
-        rect.setAttribute('fill', 'rgba(13,15,20,0.94)');
+        rect.setAttribute('rx', '6');
+        rect.setAttribute('fill', '#ffffff');
         rect.setAttribute('stroke', col);
         rect.setAttribute('stroke-width', '1.2');
 
@@ -1589,7 +1610,7 @@ export function initIndustry(opts) {
         t.setAttribute('x', String(mx));
         t.setAttribute('y', String(my + 3.5));
         t.setAttribute('text-anchor', 'middle');
-        t.setAttribute('fill', '#fff');
+        t.setAttribute('fill', '#191f28');
         t.setAttribute('font-size', '10.5');
         t.setAttribute('font-weight', '700');
         t.textContent = textStr;
